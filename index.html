@@ -136,7 +136,7 @@
         // No hay límite superior: a partir de 363.000 ARS se usa tasa fija RATE_MAX
         const cup = arsToCup(ars);
         resultDiv.textContent = 
-          `🪙 Con ${ars.toLocaleString()} ARS recibís aprox. ${Math.round(cup).toLocaleString()} CUP.`;
+          `💲 Con ${ars.toLocaleString()} ARS recibís aprox. ${Math.round(cup).toLocaleString()} CUP.`;
       }
       else { // cupToArs
         const cup = amtInput;
@@ -148,7 +148,7 @@
         // Si cup > 100.000, se usa tasa RATE_MAX
         const ars = cupToArs(cup);
         resultDiv.textContent = 
-          `💵 Con ${cup.toLocaleString()} CUP obtenés aprox. ${Math.round(ars).toLocaleString()} ARS.`;
+          `💲 Recibís aprox ${cup.toLocaleString()} CUP con. ${Math.round(ars).toLocaleString()} ARS.`;
       }
     }
   </script>
