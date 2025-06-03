@@ -72,29 +72,42 @@
   </div>
 
   <script>
-    // Parámetros
-    const MIN_ARS = 12000;
-    const MAX_ARS = 363000;
-    const MIN_CUP = 3252;
-    const MAX_CUP = 100000;
-    const RATE_MIN = 3.69; // 1 CUP = 3.69 ARS al mínimo
-    const RATE_MAX = 3.63; // 1 CUP = 3.63 ARS al máximo
+    // Parámetros fijos
+    const MIN_ARS = 12000;    // 12.000 ARS = 3.243 CUP
+    const MIN_CUP = 3243;
+    const THRESHOLD_CUP = 100000;   // 100.000 CUP
+    const THRESHOLD_ARS = 363000;   // 363.000 ARS
+    const RATE_MIN = 3.69;    // tasa 1 CUP = 3,69 ARS (mínimo)
+    const RATE_MAX = 3.63;    // tasa 1 CUP = 3,63 ARS (a partir de 100.000 CUP)
 
-    // Función que calcula la tasa interpolada en función del valor en CUP
+    // Calcula tasa progresiva (interpolación lineal) si cup ∈ [MIN_CUP, THRESHOLD_CUP]
     function rateForCup(cup) {
-      // Interpolación lineal entre (MIN_CUP, RATE_MIN) y (MAX_CUP, RATE_MAX)
-      const slope = (RATE_MAX - RATE_MIN) / (MAX_CUP - MIN_CUP);
+      if (cup <= MIN_CUP) {
+        return RATE_MIN;
+      }
+      if (cup >= THRESHOLD_CUP) {
+        return RATE_MAX;
+      }
+      // Interpolación lineal entre (MIN_CUP, RATE_MIN) y (THRESHOLD_CUP, RATE_MAX)
+      const slope = (RATE_MAX - RATE_MIN) / (THRESHOLD_CUP - MIN_CUP);
       return RATE_MIN + slope * (cup - MIN_CUP);
     }
 
-    // Convierte CUP a ARS: simplemente cup * rateForCup(cup)
+    // Convierte de CUP a ARS aplicando la tasa correcta
     function cupToArs(cup) {
-      return cup * rateForCup(cup);
+      const tasa = rateForCup(cup);
+      return cup * tasa;
     }
 
-    // Convierte ARS a CUP: se hace una búsqueda binaria para encontrar el CUP tal que cupToArs(cup) ≈ ars
+    // Convierte de ARS a CUP: buscamos el cup tal que cupToArs(cup) ≈ ars
     function arsToCup(ars) {
-      let low = MIN_CUP, high = MAX_CUP, mid, estimate;
+      // Si el ARS > valor en ARS al umbral, devolvemos directamente THRESHOLD_CUP + algo
+      if (ars >= THRESHOLD_ARS) {
+        // Cup mínimo para THRESHOLD_ARS es 100.000, pero puede ser más
+        return Math.floor(ars / RATE_MAX);
+      }
+      // Para ars < THRESHOLD_ARS, usamos búsqueda binaria entre MIN_CUP y THRESHOLD_CUP
+      let low = MIN_CUP, high = THRESHOLD_CUP, mid, estimate;
       for (let i = 0; i < 50; i++) {
         mid = (low + high) / 2;
         estimate = cupToArs(mid);
@@ -115,21 +128,27 @@
 
       if (direction === 'arsToCup') {
         const ars = amtInput;
-        if (isNaN(ars) || ars < MIN_ARS || ars > MAX_ARS) {
-          resultDiv.textContent = `Por favor ingrese un valor entre ${MIN_ARS.toLocaleString()} y ${MAX_ARS.toLocaleString()} ARS.`;
+        if (isNaN(ars) || ars < MIN_ARS) {
+          resultDiv.textContent = 
+            `Por favor ingrese un valor de ARS ≥ ${MIN_ARS.toLocaleString()}.`;
           return;
         }
+        // No hay límite superior: a partir de 363.000 ARS se usa tasa fija RATE_MAX
         const cup = arsToCup(ars);
-        resultDiv.textContent = `💲 Con ${ars.toLocaleString()} ARS recibís aprox. ${Math.round(cup).toLocaleString()} CUP.`;
+        resultDiv.textContent = 
+          `🪙 Con ${ars.toLocaleString()} ARS recibís aprox. ${Math.round(cup).toLocaleString()} CUP.`;
       }
       else { // cupToArs
         const cup = amtInput;
-        if (isNaN(cup) || cup < MIN_CUP || cup > MAX_CUP) {
-          resultDiv.textContent = `Por favor ingrese un valor entre ${MIN_CUP.toLocaleString()} y ${MAX_CUP.toLocaleString()} CUP.`;
+        if (isNaN(cup) || cup < MIN_CUP) {
+          resultDiv.textContent = 
+            `Por favor ingrese un valor de CUP ≥ ${MIN_CUP.toLocaleString()}.`;
           return;
         }
+        // Si cup > 100.000, se usa tasa RATE_MAX
         const ars = cupToArs(cup);
-        resultDiv.textContent = `💲 Con ${cup.toLocaleString()} CUP obtenés aprox. ${Math.round(ars).toLocaleString()} ARS.`;
+        resultDiv.textContent = 
+          `💵 Con ${cup.toLocaleString()} CUP obtenés aprox. ${Math.round(ars).toLocaleString()} ARS.`;
       }
     }
   </script>
