@@ -96,11 +96,13 @@
       <select id="currencyFrom">
         <option value="ARS">ARS</option>
         <option value="CUP">CUP</option>
+        <option value="MLC">MLC</option>
       </select>
       <button type="button" class="swap-btn" onclick="swapCurrencies()">⇄</button>
       <select id="currencyTo">
         <option value="CUP">CUP</option>
         <option value="ARS">ARS</option>
+        <option value="MLC">MLC</option>
       </select>
     </div>
 
@@ -114,16 +116,15 @@
 
   <script>
     // Parámetros fijos
-    const MIN_ARS = 12000;     // 12.000 ARS = 3.243 CUP
-    const MIN_CUP = 3243;      
-    const THRESHOLD_CUP = 100000;   // 100.000 CUP
-    const THRESHOLD_ARS = 363000;   // 363.000 ARS
-    const RATE_MIN = 3.69;     // 1 CUP = 3.69 ARS al mínimo
-    const RATE_MAX = 3.63;     // 1 CUP = 3.63 ARS a partir de 100.000 CUP
+    const MIN_ARS = 12000;        // 12.000 ARS
+    const MIN_CUP = 3243;         // 3.243 CUP
+    const MIN_MLC = 11.5;         // 11.5 MLC
+    const RATE_MIN = 3.69;        // 1 CUP = 3.69 ARS
+    const RATE_MAX = 3.63;        // 1 CUP = 3.63 ARS (≥100k CUP)
+    const RATE_MLC = 12000 / 11.5; // 1 MLC ≈ 1043.478 ARS
 
-    let lastResult = ''; // Guardar texto de resultado para enviar
+    let lastResult = '';
 
-    // Inicializar deshabilitación cruzada al cargar
     window.onload = () => {
       updateDisabledOptions();
       document.getElementById('currencyFrom').addEventListener('change', updateDisabledOptions);
@@ -131,72 +132,57 @@
       document.getElementById('amount').addEventListener('input', enforceNumericInput);
     };
 
-    // Permitir solo números, máximo 9 dígitos, y formatear con comas
     function enforceNumericInput(event) {
       let value = event.target.value.replace(/\D/g, '');
-      if (value.length > 9) {
-        value = value.slice(0, 9);
-      }
-      // Insertar comas cada tres dígitos
+      if (value.length > 9) value = value.slice(0, 9);
       value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
       event.target.value = value;
     }
 
-    // Deshabilita la misma opción en ambos selects
     function updateDisabledOptions() {
       const from = document.getElementById('currencyFrom').value;
       const toSelect = document.getElementById('currencyTo');
-      for (let i = 0; i < toSelect.options.length; i++) {
-        toSelect.options[i].disabled = (toSelect.options[i].value === from);
+      for (let opt of toSelect.options) {
+        opt.disabled = (
+          opt.value === from ||
+          (from === 'CUP' && opt.value === 'MLC') ||
+          (from === 'MLC' && opt.value === 'CUP')
+        );
       }
       if (from === toSelect.value) {
         toSelect.value = (from === 'ARS') ? 'CUP' : 'ARS';
       }
     }
 
-    // Intercambiar valores de los selects
     function swapCurrencies() {
-      const fromSelect = document.getElementById('currencyFrom');
-      const toSelect = document.getElementById('currencyTo');
-      const temp = fromSelect.value;
-      fromSelect.value = toSelect.value;
-      toSelect.value = temp;
+      const f = document.getElementById('currencyFrom');
+      const t = document.getElementById('currencyTo');
+      [f.value, t.value] = [t.value, f.value];
       updateDisabledOptions();
       document.getElementById('amount').value = '';
       document.getElementById('resultText').textContent = '';
       lastResult = '';
     }
 
-    // Calcula la tasa progresiva según cantidad en CUP
     function rateForCup(cup) {
-      if (cup <= MIN_CUP) {
-        return RATE_MIN;
-      }
-      if (cup >= THRESHOLD_CUP) {
-        return RATE_MAX;
-      }
-      const slope = (RATE_MAX - RATE_MIN) / (THRESHOLD_CUP - MIN_CUP);
+      if (cup <= MIN_CUP) return RATE_MIN;
+      if (cup >= 100000) return RATE_MAX;
+      const slope = (RATE_MAX - RATE_MIN) / (100000 - MIN_CUP);
       return RATE_MIN + slope * (cup - MIN_CUP);
     }
 
-    // Convierte CUP → ARS o ARS → CUP
     function cupToArs(cup) {
-      const rate = rateForCup(cup);
-      return cup * rate;
+      return cup * rateForCup(cup);
     }
     function arsToCup(ars) {
-      if (ars >= THRESHOLD_ARS) {
+      if (ars >= RATE_MAX * 100000) {
         return Math.floor(ars / RATE_MAX);
       }
-      let low = MIN_CUP, high = THRESHOLD_CUP, mid, estimate;
+      let low = MIN_CUP, high = 100000, mid, est;
       for (let i = 0; i < 50; i++) {
         mid = (low + high) / 2;
-        estimate = cupToArs(mid);
-        if (estimate > ars) {
-          high = mid;
-        } else {
-          low = mid;
-        }
+        est = cupToArs(mid);
+        if (est > ars) high = mid; else low = mid;
       }
       return mid;
     }
@@ -205,53 +191,55 @@
       const from = document.getElementById('currencyFrom').value;
       const to = document.getElementById('currencyTo').value;
       const raw = document.getElementById('amount').value;
-      // Remover comas antes de convertir
-      const numericValue = parseFloat(raw.replace(/,/g, ''));
-      const resultDiv = document.getElementById('resultText');
-      resultDiv.textContent = '';
-      lastResult = '';
+      const num = parseFloat(raw.replace(/,/g, ''));
+      const out = document.getElementById('resultText');
+      out.textContent = ''; lastResult = '';
 
       if (from === to) {
-        resultDiv.textContent = 'Seleccione monedas diferentes.';
-        return;
+        out.textContent = 'Seleccione monedas diferentes.'; return;
+      }
+      if (!raw || isNaN(num)) {
+        out.textContent = 'Ingrese un monto válido.'; return;
       }
 
-      if (!raw || isNaN(numericValue)) {
-        resultDiv.textContent = 'Ingrese un monto válido.';
-        return;
+      // ARS → CUP
+      if (from==='ARS'&&to==='CUP') {
+        if (num < MIN_ARS) { out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`; return;}
+        const cup = Math.round(arsToCup(num));
+        out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${cup.toLocaleString()} CUP.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
       }
-
-      if (from === 'ARS' && to === 'CUP') {
-        if (numericValue < MIN_ARS) {
-          resultDiv.textContent = `Por favor ingrese ARS ≥ ${MIN_ARS.toLocaleString()}.`;
-          return;
-        }
-        const cup = arsToCup(numericValue);
-        const roundedCup = Math.round(cup);
-        resultDiv.textContent = `💲 Con ${numericValue.toLocaleString()} ARS recibís aprox. ${roundedCup.toLocaleString()} CUP.`;
-        lastResult = `Quiero enviar ${numericValue.toLocaleString()} ARS para recibir ${roundedCup.toLocaleString()} CUP.`;
+      // CUP → ARS
+      else if (from==='CUP'&&to==='ARS') {
+        out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.'; return;
       }
-      else if (from === 'CUP' && to === 'ARS') {
-        if (numericValue < MIN_CUP) {
-          resultDiv.textContent = `Por favor ingrese CUP ≥ ${MIN_CUP.toLocaleString()}.`;
-          return;
-        }
-        const ars = cupToArs(numericValue);
-        const roundedArs = Math.round(ars);
-        resultDiv.textContent = `💲 Recibís aprox. ${numericValue.toLocaleString()} CUP con ${roundedArs.toLocaleString()} ARS.`;
-        lastResult = `Quiero enviar ${roundedArs.toLocaleString()} ARS para recibir ${numericValue.toLocaleString()} CUP.`;
+      // ARS → MLC
+      else if (from==='ARS'&&to==='MLC') {
+        if (num < MIN_ARS) { out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`; return;}
+        const mlc = (num / RATE_MLC).toFixed(2);
+        out.textContent = `💲 Con ${num.toLocaleString()} ARS Recibís aprox. ${mlc} MLC.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${mlc} MLC.`;
+      }
+      // MLC → ARS
+      else if (from==='MLC'&&to==='ARS') {
+        if (num < MIN_MLC) { out.textContent = `MLC ≥ ${MIN_MLC}.`; return;}
+        const ars = Math.round(num * RATE_MLC);
+        out.textContent = `💲 Recibís aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
+        lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
+      }
+      // CUP ⇄ MLC bloqueado
+      else {
+        out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
       }
     }
 
-    // Envía el mensaje al número de WhatsApp
     function sendToWhatsApp() {
       if (!lastResult) {
         alert('Primero calcula un monto válido antes de enviar.');
         return;
       }
       const phone = '5491165218910';
-      const text = encodeURIComponent(lastResult);
-      window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+      window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lastResult)}`, '_blank');
     }
   </script>
 
