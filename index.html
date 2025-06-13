@@ -210,8 +210,11 @@
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
       }
       // CUP → ARS
-      else if (from==='CUP'&&to==='ARS') {
-        out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.'; return;
+      else if (from==='ARS'&&to==='CUP') {
+        if (num < MIN_CUP) { out.textContent = `CUP ≥ ${MIN_CUP.toLocaleString()}.`; return;}
+        const cup = Math.round(cupToArs(num));
+        out.textContent = `💲 Recibís aprox. ${num.toLocaleString()} CUP con ${cup.toLocaleString()} ARS.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
       }
       // ARS → MLC
       else if (from==='ARS'&&to==='MLC') {
