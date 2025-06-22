@@ -120,7 +120,7 @@
     const MIN_CUP = 3243;         // 3.243 CUP
     const MIN_MLC = 11.5;         // 11.5 MLC
     const RATE_MIN = 3.69;        // 1 CUP = 3.69 ARS
-    const RATE_MAX = 3.63;        // 1 CUP = 3.63 ARS (≥100k CUP)
+    const RATE_MAX = 3.58;        // 1 CUP = 3.58 ARS (≥100k CUP)
     const RATE_MLC = 12000 / 11.5; // 1 MLC ≈ 1043.478 ARS
 
     let lastResult = '';
@@ -221,8 +221,8 @@
       return;
     }
     const ars = Math.round(cupToArs(num));
-    out.textContent = `💲 Con ${num.toLocaleString()} CUP recibís aprox. ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} CUP y recibir ${ars.toLocaleString()} ARS.`;
+    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} CUP con ${ars.toLocaleString()} ARS.`;
+    lastResult = `Quiero enviar ${ars.toLocaleString} ARS y recibir ${num.toLocaleString()} CUP.`;
   }
   // ARS → MLC
   else if (from==='ARS' && to==='MLC') {
@@ -241,7 +241,7 @@
       return;
     }
     const ars = Math.round(num * RATE_MLC);
-    out.textContent = `💲 Con ${num} MLC recibís aprox. ${ars.toLocaleString()} ARS.`;
+    out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
     lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
   }
   // CUP ⇄ MLC bloqueado
