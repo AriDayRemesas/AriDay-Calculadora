@@ -116,12 +116,12 @@
 
   <script>
     // Parámetros fijos
-    const MIN_ARS = 13000;        // 13.000 ARS
+    const MIN_ARS = 14500;        // 13.000 ARS
     const MIN_CUP = 3400;         // 3.400 CUP
     const MIN_MLC = 14.5;         // 14.5 MLC
-    const RATE_MIN = 4.11765;        // 1 CUP = 4.11765 ARS
-    const RATE_MAX = 4.09765;        // 1 CUP = 4.09765 ARS (≥100 CUP)
-    const RATE_MLC = 14000 / 14.5; // 1 MLC ≈ 965,517 ARS
+    const RATE_MIN = 4.2647058824;        // 1 CUP = 4.2647058824 ARS
+    const RATE_MAX = 4.2447058824;        // 1 CUP = 4.2447058824 ARS (≥100 CUP)
+    const RATE_MLC = 14500 / 14.5; // 1 MLC ≈ 1,000 ARS
 
     let lastResult = '';
 
@@ -145,7 +145,7 @@
       for (let opt of toSelect.options) {
         opt.disabled = (
           opt.value === from ||
-          (from === 'CUP' && opt.value === 'MLC') ||
+           (from === 'CUP' && opt.value === 'MLC') ||
           (from === 'MLC' && opt.value === 'CUP')
         );
       }
