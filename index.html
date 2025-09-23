@@ -97,12 +97,14 @@
         <option value="ARS">ARS</option>
         <option value="CUP">CUP</option>
         <option value="MLC">MLC</option>
+        <option value="USD">USD Efectivo</option>
       </select>
       <button type="button" class="swap-btn" onclick="swapCurrencies()">⇄</button>
       <select id="currencyTo">
         <option value="CUP">CUP</option>
         <option value="ARS">ARS</option>
         <option value="MLC">MLC</option>
+        <option value="USD">USD Efectivo</option>
       </select>
     </div>
 
@@ -122,6 +124,8 @@
     const RATE_MIN = 3.67647;        // 1 CUP = 4.2647058824 ARS
     const RATE_MAX = 3.65647;        // 1 CUP = 4.2447058824 ARS (≥100 CUP)
     const RATE_MLC = 10000 / 12.0; // 1 MLC ≈ 777.7 ARS
+    const RATE_USD = 1500;          // Multiplicador para USD Efectivo
+    const USD_EXTRA = 0.10;         // 10% extra sobre ARS
 
     let lastResult = '';
 
@@ -243,6 +247,23 @@
     const ars = Math.round(num * RATE_MLC);
     out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
     lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
+  }
+  // ARS → USD Efectivo ( (ARS + 10%) * 1500 )
+  else if (from==='ARS' && to==='USD') {
+    if (num < MIN_ARS) {
+      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+      return;
+    }
+    const usd = Math.round((num * (1 + USD_EXTRA)) * RATE_USD);
+    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${usd.toLocaleString()} USD Efectivo.`;
+    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${usd.toLocaleString()} USD Efectivo.`;
+  }
+
+  // USD Efectivo → ARS (inverso: ARS = USD / 1500 / 1.10)
+  else if (from==='USD' && to==='ARS') {
+    const ars = Math.round((num / RATE_USD) / (1 + USD_EXTRA));
+    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
+    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
   }
   // CUP ⇄ MLC bloqueado
   else {
