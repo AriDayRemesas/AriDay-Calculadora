@@ -248,20 +248,19 @@
     out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
     lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
   }
-  // ARS → USD Efectivo ( (ARS + 10%) * 1500 )
+    // ARS → USD Efectivo (inversa: USD = ARS / (1.10 * 1500))
   else if (from==='ARS' && to==='USD') {
     if (num < MIN_ARS) {
       out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
       return;
     }
-    const usd = Math.round((num * (1 + USD_EXTRA)) * RATE_USD);
+    const usd = Math.round(num / (RATE_USD * (1 + USD_EXTRA)));
     out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${usd.toLocaleString()} USD Efectivo.`;
     lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${usd.toLocaleString()} USD Efectivo.`;
   }
-
-  // USD Efectivo → ARS (inverso: ARS = USD / 1500 / 1.10)
+  // USD Efectivo → ARS (directa: ARS = USD * 1.10 * 1500)
   else if (from==='USD' && to==='ARS') {
-    const ars = Math.round((num / RATE_USD) / (1 + USD_EXTRA));
+    const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
     out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
     lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
   }
