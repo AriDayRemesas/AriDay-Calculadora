@@ -98,6 +98,8 @@
         <option value="CUP">CUP</option>
         <option value="MLC">MLC</option>
         <option value="USD">USD Efectivo</option>
+        <!-- AGREGADO -->
+        <option value="SALDO">Saldo Móvil</option>
       </select>
       <button type="button" class="swap-btn" onclick="swapCurrencies()">⇄</button>
       <select id="currencyTo">
@@ -105,6 +107,8 @@
         <option value="ARS">ARS</option>
         <option value="MLC">MLC</option>
         <option value="USD">USD Efectivo</option>
+        <!-- AGREGADO -->
+        <option value="SALDO">Saldo Móvil</option>
       </select>
     </div>
 
@@ -126,6 +130,8 @@
     const RATE_MLC = 10000 / 12.0; // 1 MLC ≈ 777.7 ARS
     const RATE_USD = 1600;          // Multiplicador para USD Efectivo
     const USD_EXTRA = 0.10;         // 10% extra sobre ARS
+    // AGREGADO: 1 SALDO = 4 CUP
+    const CUP_POR_SALDO = 4;
 
     let lastResult = '';
 
@@ -263,6 +269,21 @@
     const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
     out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
     lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
+  }
+  // AGREGADO: ARS → SALDO (1 SALDO = 4 CUP)
+  else if (from==='ARS' && to==='SALDO') {
+    if (num < MIN_ARS) {
+      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+      return;
+    }
+    const cup = arsToCup(num);
+    const saldo = Math.round(cup / CUP_POR_SALDO);
+    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${saldo.toLocaleString()} Saldo Móvil.`;
+    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${saldo.toLocaleString()} Saldo Móvil.`;
+  }
+  // AGREGADO: cualquier otra conversión que involucre SALDO está bloqueada
+  else if (from==='SALDO' || to==='SALDO') {
+    out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS → Saldo).';
   }
   // CUP ⇄ MLC bloqueado
   else {
