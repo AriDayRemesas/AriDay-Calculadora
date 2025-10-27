@@ -98,7 +98,6 @@
         <option value="CUP">CUP</option>
         <option value="MLC">MLC</option>
         <option value="USD">USD Efectivo</option>
-        <!-- AGREGADO -->
         <option value="SALDO">Saldo Móvil</option>
       </select>
       <button type="button" class="swap-btn" onclick="swapCurrencies()">⇄</button>
@@ -107,7 +106,6 @@
         <option value="ARS">ARS</option>
         <option value="MLC">MLC</option>
         <option value="USD">USD Efectivo</option>
-        <!-- AGREGADO -->
         <option value="SALDO">Saldo Móvil</option>
       </select>
     </div>
@@ -122,16 +120,18 @@
 
   <script>
     // Parámetros fijos
-    const MIN_ARS = 10000;        // 13.800 ARS
-    const MIN_CUP = 2720;         // 3.650 CUP
-    const MIN_MLC = 12.0;         // 18.0 MLC
-    const RATE_MIN = 3.67647;        // 1 CUP = 4.2647058824 ARS
-    const RATE_MAX = 3.65647;        // 1 CUP = 4.2447058824 ARS (≥100 CUP)
+    const MIN_ARS = 10000;         // mínimo general ARS (se mantiene)
+    const MIN_CUP = 2720;          // mínimo CUP
+    const MIN_MLC = 12.0;          // mínimo MLC
+    const RATE_MIN = 3.67647;      // 1 CUP = 4.2647058824 ARS
+    const RATE_MAX = 3.65647;      // 1 CUP = 4.2447058824 ARS (≥100 CUP)
     const RATE_MLC = 10000 / 12.0; // 1 MLC ≈ 777.7 ARS
-    const RATE_USD = 1600;          // Multiplicador para USD Efectivo
-    const USD_EXTRA = 0.10;         // 10% extra sobre ARS
-    // AGREGADO: 1 SALDO = 4 CUP
-    const CUP_POR_SALDO = 4;
+    const RATE_USD = 1600;         // Multiplicador para USD Efectivo
+    const USD_EXTRA = 0.10;        // 10% extra sobre ARS
+
+    // Saldo Móvil
+    const CUP_POR_SALDO = 4;       // 1 SALDO = 4 CUP
+    const MIN_SALDO = 360;         // mínimo especial solo para ARS ↔ SALDO
 
     let lastResult = '';
 
@@ -155,8 +155,10 @@
       for (let opt of toSelect.options) {
         opt.disabled = (
           opt.value === from ||
-           (from === 'CUP' && opt.value === 'MLC') ||
-          (from === 'MLC' && opt.value === 'CUP')
+          (from === 'CUP' && opt.value === 'MLC') ||
+          (from === 'MLC' && opt.value === 'CUP') ||
+          // Bloqueo general de SALDO con terceros que no sean ARS
+          ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
         );
       }
       if (from === toSelect.value) {
@@ -197,99 +199,117 @@
       return mid;
     }
 
+    // ARS necesarios para el mínimo especial de 360 Saldo
+    function arsMinParaSaldoMinimo() {
+      const cupMin = MIN_SALDO * CUP_POR_SALDO;           // 360 * 4 = 1440 CUP
+      return Math.round(cupToArs(cupMin));                // ARS según tu curva
+    }
+
     function calculate() {
-  const from = document.getElementById('currencyFrom').value;
-  const to   = document.getElementById('currencyTo').value;
-  const raw  = document.getElementById('amount').value;
-  const num  = parseFloat(raw.replace(/,/g, ''));
-  const out  = document.getElementById('resultText');
-  out.textContent = ''; lastResult = '';
+      const from = document.getElementById('currencyFrom').value;
+      const to   = document.getElementById('currencyTo').value;
+      const raw  = document.getElementById('amount').value;
+      const num  = parseFloat(raw.replace(/,/g, ''));
+      const out  = document.getElementById('resultText');
+      out.textContent = ''; lastResult = '';
 
-  if (from === to) {
-    out.textContent = 'Seleccione monedas diferentes.';
-    return;
-  }
-  if (!raw || isNaN(num)) {
-    out.textContent = 'Ingrese un monto válido.';
-    return;
-  }
+      if (from === to) {
+        out.textContent = 'Seleccione monedas diferentes.';
+        return;
+      }
+      if (!raw || isNaN(num)) {
+        out.textContent = 'Ingrese un monto válido.';
+        return;
+      }
 
-  // ARS → CUP
-  if (from==='ARS' && to==='CUP') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
-      return;
+      // ARS → CUP
+      if (from==='ARS' && to==='CUP') {
+        if (num < MIN_ARS) {
+          out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+          return;
+        }
+        const cup = Math.round(arsToCup(num));
+        out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${cup.toLocaleString()} CUP.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
+      }
+      // CUP → ARS
+      else if (from==='CUP' && to==='ARS') {
+        if (num < MIN_CUP) {
+          out.textContent = `CUP ≥ ${MIN_CUP.toLocaleString()}.`;
+          return;
+        }
+        const ars = Math.round(cupToArs(num));
+        out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} CUP con ${ars.toLocaleString()} ARS.`;
+        lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} CUP.`;
+      }
+      // ARS → MLC
+      else if (from==='ARS' && to==='MLC') {
+        if (num < MIN_ARS) {
+          out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+          return;
+        }
+        const mlc = (num / RATE_MLC).toFixed(2);
+        out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${mlc} MLC.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${mlc} MLC.`;
+      }
+      // MLC → ARS
+      else if (from==='MLC' && to==='ARS') {
+        if (num < MIN_MLC) {
+          out.textContent = `MLC ≥ ${MIN_MLC}.`;
+          return;
+        }
+        const ars = Math.round(num * RATE_MLC);
+        out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
+        lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
+      }
+      // ARS → USD Efectivo
+      else if (from==='ARS' && to==='USD') {
+        if (num < MIN_ARS) {
+          out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+          return;
+        }
+        const usd = Math.round(num / (RATE_USD * (1 + USD_EXTRA)));
+        out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${usd.toLocaleString()} USD Efectivo.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${usd.toLocaleString()} USD Efectivo.`;
+      }
+      // USD Efectivo → ARS
+      else if (from==='USD' && to==='ARS') {
+        const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
+        out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
+        lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
+      }
+      // ARS → SALDO (mínimo: equivalente a 360 Saldo)
+      else if (from==='ARS' && to==='SALDO') {
+        const minArsSaldo = arsMinParaSaldoMinimo();
+        if (num < minArsSaldo) {
+          out.textContent = `ARS ≥ ${minArsSaldo.toLocaleString()} (equiv. a ${MIN_SALDO} Saldo).`;
+          return;
+        }
+        const cup = arsToCup(num);
+        const saldo = Math.round(cup / CUP_POR_SALDO);
+        out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${saldo.toLocaleString()} Saldo Móvil.`;
+        lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${saldo.toLocaleString()} Saldo Móvil.`;
+      }
+      // SALDO → ARS (mínimo: 360 Saldo)
+      else if (from==='SALDO' && to==='ARS') {
+        if (num < MIN_SALDO) {
+          out.textContent = `Saldo ≥ ${MIN_SALDO.toLocaleString()}.`;
+          return;
+        }
+        const cup = num * CUP_POR_SALDO;
+        const ars = Math.round(cupToArs(cup));
+        out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} Saldo Móvil con ${ars.toLocaleString()} ARS.`;
+        lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} Saldo Móvil.`;
+      }
+      // Bloqueo de cualquier otra conversión que involucre SALDO
+      else if (from==='SALDO' || to==='SALDO') {
+        out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS ⇄ Saldo).';
+      }
+      // CUP ⇄ MLC bloqueado
+      else {
+        out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
+      }
     }
-    const cup = Math.round(arsToCup(num));
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${cup.toLocaleString()} CUP.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
-  }
-  // CUP → ARS
-  else if (from==='CUP' && to==='ARS') {
-    if (num < MIN_CUP) {
-      out.textContent = `CUP ≥ ${MIN_CUP.toLocaleString()}.`;
-      return;
-    }
-    const ars = Math.round(cupToArs(num));
-    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} CUP con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} CUP.`;
-  }
-  // ARS → MLC
-  else if (from==='ARS' && to==='MLC') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
-      return;
-    }
-    const mlc = (num / RATE_MLC).toFixed(2);
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${mlc} MLC.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${mlc} MLC.`;
-  }
-  // MLC → ARS
-  else if (from==='MLC' && to==='ARS') {
-    if (num < MIN_MLC) {
-      out.textContent = `MLC ≥ ${MIN_MLC}.`;
-      return;
-    }
-    const ars = Math.round(num * RATE_MLC);
-    out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
-  }
-    // ARS → USD Efectivo (inversa: USD = ARS / (1.10 * 1500))
-  else if (from==='ARS' && to==='USD') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
-      return;
-    }
-    const usd = Math.round(num / (RATE_USD * (1 + USD_EXTRA)));
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${usd.toLocaleString()} USD Efectivo.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${usd.toLocaleString()} USD Efectivo.`;
-  }
-  // USD Efectivo → ARS (directa: ARS = USD * 1.10 * 1500)
-  else if (from==='USD' && to==='ARS') {
-    const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
-    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
-  }
-  // AGREGADO: ARS → SALDO (1 SALDO = 4 CUP)
-  else if (from==='ARS' && to==='SALDO') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
-      return;
-    }
-    const cup = arsToCup(num);
-    const saldo = Math.round(cup / CUP_POR_SALDO);
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${saldo.toLocaleString()} Saldo Móvil.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${saldo.toLocaleString()} Saldo Móvil.`;
-  }
-  // AGREGADO: cualquier otra conversión que involucre SALDO está bloqueada
-  else if (from==='SALDO' || to==='SALDO') {
-    out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS → Saldo).';
-  }
-  // CUP ⇄ MLC bloqueado
-  else {
-    out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
-  }
-}
 
     function sendToWhatsApp() {
       if (!lastResult) {
