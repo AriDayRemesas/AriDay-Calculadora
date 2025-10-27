@@ -123,8 +123,8 @@
     const MIN_ARS = 10000;         // mínimo general ARS (se mantiene)
     const MIN_CUP = 2720;          // mínimo CUP
     const MIN_MLC = 12.0;          // mínimo MLC
-    const RATE_MIN = 3.67647;      // 1 CUP = 4.2647058824 ARS
-    const RATE_MAX = 3.65647;      // 1 CUP = 4.2447058824 ARS (≥100 CUP)
+    const RATE_MIN = 3.67647;      // ARS por 1 CUP (tasa mínima fija)
+    const RATE_MAX = 3.65647;      // ARS por 1 CUP (curva para CUP)
     const RATE_MLC = 10000 / 12.0; // 1 MLC ≈ 777.7 ARS
     const RATE_USD = 1600;         // Multiplicador para USD Efectivo
     const USD_EXTRA = 0.10;        // 10% extra sobre ARS
@@ -157,7 +157,7 @@
           opt.value === from ||
           (from === 'CUP' && opt.value === 'MLC') ||
           (from === 'MLC' && opt.value === 'CUP') ||
-          // Bloqueo general de SALDO con terceros que no sean ARS
+          // SALDO solo puede convertir con ARS
           ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
         );
       }
@@ -176,16 +176,14 @@
       lastResult = '';
     }
 
+    // ---- Curva CUP (se mantiene para CUP y otros) ----
     function rateForCup(cup) {
       if (cup <= MIN_CUP) return RATE_MIN;
       if (cup >= 100000) return RATE_MAX;
       const slope = (RATE_MAX - RATE_MIN) / (100000 - MIN_CUP);
       return RATE_MIN + slope * (cup - MIN_CUP);
     }
-
-    function cupToArs(cup) {
-      return cup * rateForCup(cup);
-    }
+    function cupToArs(cup) { return cup * rateForCup(cup); }
     function arsToCup(ars) {
       if (ars >= RATE_MAX * 100000) {
         return Math.floor(ars / RATE_MAX);
@@ -199,10 +197,16 @@
       return mid;
     }
 
-    // ARS necesarios para el mínimo especial de 360 Saldo
+    // ---- SALDO siempre con RATE_MIN (sin curva/bonificación) ----
+    function cupToArsFixed(cup) {          // ARS = CUP * RATE_MIN
+      return cup * RATE_MIN;
+    }
+    function arsToCupFixed(ars) {          // CUP = ARS / RATE_MIN
+      return ars / RATE_MIN;
+    }
     function arsMinParaSaldoMinimo() {
-      const cupMin = MIN_SALDO * CUP_POR_SALDO;           // 360 * 4 = 1440 CUP
-      return Math.round(cupToArs(cupMin));                // ARS según tu curva
+      const cupMin = MIN_SALDO * CUP_POR_SALDO; // 360 * 4 = 1440 CUP
+      return Math.round(cupMin * RATE_MIN);     // ARS usando siempre RATE_MIN
     }
 
     function calculate() {
@@ -222,7 +226,7 @@
         return;
       }
 
-      // ARS → CUP
+      // ARS → CUP (curva original)
       if (from==='ARS' && to==='CUP') {
         if (num < MIN_ARS) {
           out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
@@ -232,7 +236,7 @@
         out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${cup.toLocaleString()} CUP.`;
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
       }
-      // CUP → ARS
+      // CUP → ARS (curva original)
       else if (from==='CUP' && to==='ARS') {
         if (num < MIN_CUP) {
           out.textContent = `CUP ≥ ${MIN_CUP.toLocaleString()}.`;
@@ -278,26 +282,26 @@
         out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
         lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
       }
-      // ARS → SALDO (mínimo: equivalente a 360 Saldo)
+      // ARS → SALDO (mínimo: equivalente a 360 Saldo) usando RATE_MIN fijo
       else if (from==='ARS' && to==='SALDO') {
         const minArsSaldo = arsMinParaSaldoMinimo();
         if (num < minArsSaldo) {
           out.textContent = `ARS ≥ ${minArsSaldo.toLocaleString()} (equiv. a ${MIN_SALDO} Saldo).`;
           return;
         }
-        const cup = arsToCup(num);
+        const cup = arsToCupFixed(num);                  // sin curva
         const saldo = Math.round(cup / CUP_POR_SALDO);
         out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${saldo.toLocaleString()} Saldo Móvil.`;
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${saldo.toLocaleString()} Saldo Móvil.`;
       }
-      // SALDO → ARS (mínimo: 360 Saldo)
+      // SALDO → ARS (mínimo: 360 Saldo) usando RATE_MIN fijo
       else if (from==='SALDO' && to==='ARS') {
         if (num < MIN_SALDO) {
           out.textContent = `Saldo ≥ ${MIN_SALDO.toLocaleString()}.`;
           return;
         }
         const cup = num * CUP_POR_SALDO;
-        const ars = Math.round(cupToArs(cup));
+        const ars = Math.round(cupToArsFixed(cup));      // sin curva
         out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} Saldo Móvil con ${ars.toLocaleString()} ARS.`;
         lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} Saldo Móvil.`;
       }
