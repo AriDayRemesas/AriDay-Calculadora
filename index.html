@@ -8,19 +8,21 @@
     body {
       font-family: sans-serif;
       padding: 1.5rem;
-      background: #f5f5f5;
+      background: #E6F2FA; /* celeste muy claro */
     }
     .card {
-      background: #fff;
+      background: #ffffff; /* blanco */
       max-width: 450px;
       margin: auto;
       padding: 2rem;
       border-radius: 1rem;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px rgba(117, 170, 219, 0.4); /* celeste translúcido */
+      border: 2px solid #75AADB; /* celeste bandera */
     }
     h2 {
       margin: 0;
       font-size: 1.5rem;
+      color: #75AADB; /* celeste bandera */
     }
     p.subtitle {
       margin: 0.2rem 0 1rem;
@@ -30,6 +32,7 @@
       display: block;
       margin-top: 1rem;
       font-weight: bold;
+      color: #004B87; /* azul bandera */
     }
     .selector-group {
       display: flex;
@@ -39,54 +42,72 @@
     select {
       flex: 1;
       padding: 0.5rem;
-      border: 1px solid #ccc;
+      border: 1px solid #75AADB;
       border-radius: 0.5rem;
       font-size: 1rem;
       margin: 0 0.5rem;
+      background: #F8FCFF;
+      color: #004B87;
     }
     button, input {
       width: 100%;
       margin-top: 1rem;
       padding: 0.5rem;
-      border: 1px solid #ccc;
+      border: 1px solid #75AADB;
       border-radius: 0.5rem;
       font-size: 1rem;
       box-sizing: border-box;
     }
+    input {
+      background: #F8FCFF;
+      color: #004B87;
+    }
     .swap-btn {
       padding: 0.5rem 0.8rem;
       border: none;
-      background: #1a73e8;
+      background: #75AADB; /* celeste bandera */
       color: #fff;
       border-radius: 1rem;
       cursor: pointer;
       font-size: 1.2rem;
       line-height: 1;
+      transition: background 0.3s;
+    }
+    .swap-btn:hover {
+      background: #004B87; /* azul bandera */
     }
     .btn-enviar {
-      background-color: #1a73e8;
-      color: #fff;
+      background-color: #FFD700; /* dorado */
+      color: #004B87;
       border: none;
       border-radius: 0.5rem;
       padding: 0.7rem;
       margin-top: 0.5rem;
       cursor: pointer;
       font-size: 1rem;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+    .btn-enviar:hover {
+      background-color: #FFEA75; /* dorado más claro */
     }
     .result {
       margin-top: 1.2rem;
       font-weight: bold;
       font-size: 1.1rem;
-      color: #1a73e8;
+      color: #004B87; /* azul bandera */
+    }
+    a {
+      color: #75AADB;
     }
   </style>
 </head>
 <body>
 
   <div class="card">
-    <h2>🌐 AriDay Remesas</h2>
+    <h2>🇦🇷 AriDay Remesas</h2>
     <p class="subtitle">
-      <a href="https://wa.me/5491165218910" target="_blank" style="text-decoration:none; color:#1a73e8;">
+      <a href="https://wa.me/5491165218910" target="_blank" style="text-decoration:none;">
         WhatsApp: +54 9 11 6521 8910
       </a>
     </p>
@@ -119,19 +140,18 @@
   </div>
 
   <script>
-    // Parámetros fijos
-    const MIN_ARS = 10000;         // mínimo general ARS (se mantiene)
-    const MIN_CUP = 2878.79;          // mínimo CUP
-    const MIN_MLC = 12.0;          // mínimo MLC
-    const RATE_MIN = 3.47368;      // ARS por 1 CUP (tasa mínima fija)
-    const RATE_MAX = 3.45368;      // ARS por 1 CUP (curva para CUP)
-    const RATE_MLC = 10000 / 12.0; // 1 MLC ≈ 777.7 ARS
-    const RATE_USD = 1550;         // Multiplicador para USD Efectivo
-    const USD_EXTRA = 0.10;        // 10% extra sobre ARS
+    // --- Todo el código JS original se mantiene igual ---
+    const MIN_ARS = 10000;
+    const MIN_CUP = 2878.79;
+    const MIN_MLC = 12.0;
+    const RATE_MIN = 3.47368;
+    const RATE_MAX = 3.45368;
+    const RATE_MLC = 10000 / 12.0;
+    const RATE_USD = 1550;
+    const USD_EXTRA = 0.10;
 
-    // Saldo Móvil
-    const CUP_POR_SALDO = 4;       // 1 SALDO = 4 CUP
-    const MIN_SALDO = 360;         // mínimo especial solo para ARS ↔ SALDO
+    const CUP_POR_SALDO = 4;
+    const MIN_SALDO = 360;
 
     let lastResult = '';
 
@@ -157,7 +177,6 @@
           opt.value === from ||
           (from === 'CUP' && opt.value === 'MLC') ||
           (from === 'MLC' && opt.value === 'CUP') ||
-          // SALDO solo puede convertir con ARS
           ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
         );
       }
@@ -176,7 +195,6 @@
       lastResult = '';
     }
 
-    // ---- Curva CUP (se mantiene para CUP y otros) ----
     function rateForCup(cup) {
       if (cup <= MIN_CUP) return RATE_MIN;
       if (cup >= 100000) return RATE_MAX;
@@ -197,16 +215,11 @@
       return mid;
     }
 
-    // ---- SALDO siempre con RATE_MIN (sin curva/bonificación) ----
-    function cupToArsFixed(cup) {          // ARS = CUP * RATE_MIN
-      return cup * RATE_MIN;
-    }
-    function arsToCupFixed(ars) {          // CUP = ARS / RATE_MIN
-      return ars / RATE_MIN;
-    }
+    function cupToArsFixed(cup) { return cup * RATE_MIN; }
+    function arsToCupFixed(ars) { return ars / RATE_MIN; }
     function arsMinParaSaldoMinimo() {
-      const cupMin = MIN_SALDO * CUP_POR_SALDO; // 360 * 4 = 1440 CUP
-      return Math.round(cupMin * RATE_MIN);     // ARS usando siempre RATE_MIN
+      const cupMin = MIN_SALDO * CUP_POR_SALDO;
+      return Math.round(cupMin * RATE_MIN);
     }
 
     function calculate() {
@@ -226,7 +239,6 @@
         return;
       }
 
-      // ARS → CUP (curva original)
       if (from==='ARS' && to==='CUP') {
         if (num < MIN_ARS) {
           out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
@@ -236,7 +248,6 @@
         out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${cup.toLocaleString()} CUP.`;
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
       }
-      // CUP → ARS (curva original)
       else if (from==='CUP' && to==='ARS') {
         if (num < MIN_CUP) {
           out.textContent = `CUP ≥ ${MIN_CUP.toLocaleString()}.`;
@@ -246,7 +257,6 @@
         out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} CUP con ${ars.toLocaleString()} ARS.`;
         lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} CUP.`;
       }
-      // ARS → MLC
       else if (from==='ARS' && to==='MLC') {
         if (num < MIN_ARS) {
           out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
@@ -256,7 +266,6 @@
         out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${mlc} MLC.`;
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${mlc} MLC.`;
       }
-      // MLC → ARS
       else if (from==='MLC' && to==='ARS') {
         if (num < MIN_MLC) {
           out.textContent = `MLC ≥ ${MIN_MLC}.`;
@@ -266,7 +275,6 @@
         out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
         lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
       }
-      // ARS → USD Efectivo
       else if (from==='ARS' && to==='USD') {
         if (num < MIN_ARS) {
           out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
@@ -276,40 +284,35 @@
         out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${usd.toLocaleString()} USD Efectivo.`;
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${usd.toLocaleString()} USD Efectivo.`;
       }
-      // USD Efectivo → ARS
       else if (from==='USD' && to==='ARS') {
         const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
         out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
         lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
       }
-      // ARS → SALDO (mínimo: equivalente a 360 Saldo) usando RATE_MIN fijo
       else if (from==='ARS' && to==='SALDO') {
         const minArsSaldo = arsMinParaSaldoMinimo();
         if (num < minArsSaldo) {
           out.textContent = `ARS ≥ ${minArsSaldo.toLocaleString()} (equiv. a ${MIN_SALDO} Saldo).`;
           return;
         }
-        const cup = arsToCupFixed(num);                  // sin curva
+        const cup = arsToCupFixed(num);
         const saldo = Math.round(cup / CUP_POR_SALDO);
         out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${saldo.toLocaleString()} Saldo Móvil.`;
         lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${saldo.toLocaleString()} Saldo Móvil.`;
       }
-      // SALDO → ARS (mínimo: 360 Saldo) usando RATE_MIN fijo
       else if (from==='SALDO' && to==='ARS') {
         if (num < MIN_SALDO) {
           out.textContent = `Saldo ≥ ${MIN_SALDO.toLocaleString()}.`;
           return;
         }
         const cup = num * CUP_POR_SALDO;
-        const ars = Math.round(cupToArsFixed(cup));      // sin curva
+        const ars = Math.round(cupToArsFixed(cup));
         out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} Saldo Móvil con ${ars.toLocaleString()} ARS.`;
         lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} Saldo Móvil.`;
       }
-      // Bloqueo de cualquier otra conversión que involucre SALDO
       else if (from==='SALDO' || to==='SALDO') {
         out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS ⇄ Saldo).';
       }
-      // CUP ⇄ MLC bloqueado
       else {
         out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
       }
