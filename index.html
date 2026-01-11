@@ -39,7 +39,7 @@
     </div>
 
     <label for="amount">Ingrese monto (máx. 9 dígitos):</label>
-    <input type="text" id="amount" placeholder="Ej: 15.000" maxlength="13" />
+    <input type="text" id="amount" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 15.000" maxlength="13" />
 
     <div class="result" id="resultText"></div>
     <button onclick="calculate()">Calcular</button>
