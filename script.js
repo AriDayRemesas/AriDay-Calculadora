@@ -1,5 +1,10 @@
 let MIN_ARS, MIN_CUP, MIN_MLC, MIN_SALDO, RATE_MIN, RATE_MAX, RATE_MLC, RATE_USD, USD_EXTRA, CUP_POR_SALDO;
 let lastResult = '';
+let copyText = '';
+
+function formatAR(num) {
+  return num.toLocaleString('es-AR');
+}
 
 async function loadPrices() {
   try {
@@ -23,7 +28,7 @@ async function loadPrices() {
 function enforceNumericInput(event) {
   let value = event.target.value.replace(/\D/g, '');
   if (value.length > 9) value = value.slice(0, 9);
-  value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   event.target.value = value;
 }
 
@@ -51,6 +56,7 @@ function swapCurrencies() {
   document.getElementById('amount').value = '';
   document.getElementById('resultText').textContent = '';
   lastResult = '';
+  copyText = '';
   const copyBtn = document.getElementById('copyBtn');
   if (copyBtn) copyBtn.style.display = 'none';
 }
@@ -87,10 +93,9 @@ function arsMinParaSaldoMinimo() {
 }
 
 function copyToClipboard() {
-  const resultText = document.getElementById('resultText').textContent;
-  if (!resultText) return;
+  if (!copyText) return;
   
-  navigator.clipboard.writeText(resultText).then(() => {
+  navigator.clipboard.writeText(copyText).then(() => {
     const copyBtn = document.getElementById('copyBtn');
     const originalHTML = copyBtn.innerHTML;
     copyBtn.innerHTML = '✓';
@@ -120,9 +125,9 @@ function calculate() {
   const from = document.getElementById('currencyFrom').value;
   const to   = document.getElementById('currencyTo').value;
   const raw  = document.getElementById('amount').value;
-  const num  = parseFloat(raw.replace(/,/g, ''));
+  const num  = parseFloat(raw.replace(/\./g, ''));
   const out  = document.getElementById('resultText');
-  out.textContent = ''; lastResult = '';
+  out.textContent = ''; lastResult = ''; copyText = '';
   
   const copyBtn = document.getElementById('copyBtn');
   if (copyBtn) copyBtn.style.display = 'none';
@@ -138,32 +143,35 @@ function calculate() {
 
   if (from==='ARS' && to==='CUP') {
     if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+      out.textContent = `ARS ≥ ${formatAR(MIN_ARS)}.`;
       return;
     }
     const cup = Math.round(arsToCup(num));
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${cup.toLocaleString()} CUP.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${cup.toLocaleString()} CUP.`;
+    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(cup)} CUP.`;
+    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(cup)} CUP.`;
+    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(cup)} CUP.`;
     showCopyButton();
   }
   else if (from==='CUP' && to==='ARS') {
     if (num < MIN_CUP) {
-      out.textContent = `CUP ≥ ${MIN_CUP.toLocaleString()}.`;
+      out.textContent = `CUP ≥ ${formatAR(MIN_CUP)}.`;
       return;
     }
     const ars = Math.round(cupToArs(num));
-    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} CUP con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} CUP.`;
+    out.textContent = `💲 Recibis aprox. ${formatAR(num)} CUP con ${formatAR(ars)} ARS.`;
+    copyText = `Recibis ${formatAR(num)} CUP con ${formatAR(ars)} ARS.`;
+    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} CUP.`;
     showCopyButton();
   }
   else if (from==='ARS' && to==='MLC') {
     if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+      out.textContent = `ARS ≥ ${formatAR(MIN_ARS)}.`;
       return;
     }
     const mlc = (num / RATE_MLC).toFixed(2);
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${mlc} MLC.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${mlc} MLC.`;
+    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${mlc} MLC.`;
+    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${mlc} MLC.`;
+    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${mlc} MLC.`;
     showCopyButton();
   }
   else if (from==='MLC' && to==='ARS') {
@@ -172,47 +180,52 @@ function calculate() {
       return;
     }
     const ars = Math.round(num * RATE_MLC);
-    out.textContent = `💲 Recibis aprox. ${num} MLC con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num} MLC.`;
+    out.textContent = `💲 Recibis aprox. ${num} MLC con ${formatAR(ars)} ARS.`;
+    copyText = `Recibis ${num} MLC con ${formatAR(ars)} ARS.`;
+    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${num} MLC.`;
     showCopyButton();
   }
   else if (from==='ARS' && to==='USD') {
     if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${MIN_ARS.toLocaleString()}.`;
+      out.textContent = `ARS ≥ ${formatAR(MIN_ARS)}.`;
       return;
     }
     const usd = Math.round(num / (RATE_USD * (1 + USD_EXTRA)));
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${usd.toLocaleString()} USD Efectivo.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${usd.toLocaleString()} USD Efectivo.`;
+    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(usd)} USD Efectivo.`;
+    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(usd)} USD Efectivo.`;
+    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(usd)} USD Efectivo.`;
     showCopyButton();
   }
   else if (from==='USD' && to==='ARS') {
     const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
-    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} USD Efectivo con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} USD Efectivo.`;
+    out.textContent = `💲 Recibis aprox. ${formatAR(num)} USD Efectivo con ${formatAR(ars)} ARS.`;
+    copyText = `Recibis ${formatAR(num)} USD Efectivo con ${formatAR(ars)} ARS.`;
+    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} USD Efectivo.`;
     showCopyButton();
   }
   else if (from==='ARS' && to==='SALDO') {
     const minArsSaldo = arsMinParaSaldoMinimo();
     if (num < minArsSaldo) {
-      out.textContent = `ARS ≥ ${minArsSaldo.toLocaleString()} (equiv. a ${MIN_SALDO} Saldo).`;
+      out.textContent = `ARS ≥ ${formatAR(minArsSaldo)} (equiv. a ${MIN_SALDO} Saldo).`;
       return;
     }
     const cup = arsToCupFixed(num);
     const saldo = Math.round(cup / CUP_POR_SALDO);
-    out.textContent = `💲 Con ${num.toLocaleString()} ARS recibís aprox. ${saldo.toLocaleString()} Saldo Móvil.`;
-    lastResult = `Quiero enviar ${num.toLocaleString()} ARS y recibir ${saldo.toLocaleString()} Saldo Móvil.`;
+    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(saldo)} Saldo Móvil.`;
+    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(saldo)} Saldo Móvil.`;
+    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(saldo)} Saldo Móvil.`;
     showCopyButton();
   }
   else if (from==='SALDO' && to==='ARS') {
     if (num < MIN_SALDO) {
-      out.textContent = `Saldo ≥ ${MIN_SALDO.toLocaleString()}.`;
+      out.textContent = `Saldo ≥ ${formatAR(MIN_SALDO)}.`;
       return;
     }
     const cup = num * CUP_POR_SALDO;
     const ars = Math.round(cupToArsFixed(cup));
-    out.textContent = `💲 Recibis aprox. ${num.toLocaleString()} Saldo Móvil con ${ars.toLocaleString()} ARS.`;
-    lastResult = `Quiero enviar ${ars.toLocaleString()} ARS y recibir ${num.toLocaleString()} Saldo Móvil.`;
+    out.textContent = `💲 Recibis aprox. ${formatAR(num)} Saldo Móvil con ${formatAR(ars)} ARS.`;
+    copyText = `Recibis ${formatAR(num)} Saldo Móvil con ${formatAR(ars)} ARS.`;
+    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} Saldo Móvil.`;
     showCopyButton();
   }
   else if (from==='SALDO' || to==='SALDO') {
@@ -239,3 +252,4 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('currencyTo').addEventListener('change', updateDisabledOptions);
   document.getElementById('amount').addEventListener('input', enforceNumericInput);
 });
+
