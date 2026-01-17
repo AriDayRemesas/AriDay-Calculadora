@@ -1,4 +1,5 @@
 let MIN_ARS, MIN_CUP, MIN_MLC, MIN_SALDO, RATE_MIN, RATE_MAX, RATE_MLC, RATE_USD, USD_EXTRA, CUP_POR_SALDO;
+let MIN_ARS_CUP_EF, MIN_CUP_EF, RATE_MIN_CUP_EF, RATE_MAX_CUP_EF;
 let lastResult = '';
 let copyText = '';
 
@@ -20,6 +21,10 @@ async function loadPrices() {
     RATE_USD = prices.RATE_USD;
     USD_EXTRA = prices.USD_EXTRA;
     CUP_POR_SALDO = prices.CUP_POR_SALDO;
+    MIN_ARS_CUP_EF = prices.MIN_ARS_CUP_EF;
+    MIN_CUP_EF = prices.MIN_CUP_EF;
+    RATE_MIN_CUP_EF = prices.RATE_MIN_CUP_EF;
+    RATE_MAX_CUP_EF = prices.RATE_MAX_CUP_EF;
   } catch (error) {
     console.error('Error loading prices:', error);
   }
@@ -39,7 +44,9 @@ function updateDisabledOptions() {
     opt.disabled = (
       opt.value === from ||
       (from === 'CUP' && opt.value === 'MLC') ||
+      (from === 'CUP_EF' && opt.value === 'MLC') ||
       (from === 'MLC' && opt.value === 'CUP') ||
+      (from === 'MLC' && opt.value === 'CUP_EF') ||
       ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
     );
   }
@@ -78,6 +85,28 @@ function arsToCup(ars) {
   for (let i = 0; i < 50; i++) {
     mid = (low + high) / 2;
     est = cupToArs(mid);
+    if (est > ars) high = mid; else low = mid;
+  }
+  return mid;
+}
+
+function rateForCupEfectivo(cup) {
+  if (cup <= MIN_CUP_EF) return RATE_MIN_CUP_EF;
+  if (cup >= 100000) return RATE_MAX_CUP_EF;
+  const slope = (RATE_MAX_CUP_EF - RATE_MIN_CUP_EF) / (100000 - MIN_CUP_EF);
+  return RATE_MIN_CUP_EF + slope * (cup - MIN_CUP_EF);
+}
+
+function cupEfectivoToArs(cup) { return cup * rateForCupEfectivo(cup); }
+
+function arsToCupEfectivo(ars) {
+  if (ars >= RATE_MAX_CUP_EF * 100000) {
+    return Math.floor(ars / RATE_MAX_CUP_EF);
+  }
+  let low = MIN_CUP_EF, high = 100000, mid, est;
+  for (let i = 0; i < 50; i++) {
+    mid = (low + high) / 2;
+    est = cupEfectivoToArs(mid);
     if (est > ars) high = mid; else low = mid;
   }
   return mid;
@@ -161,6 +190,28 @@ function calculate() {
     out.textContent = `💲 Recibis aprox. ${formatAR(num)} CUP con ${formatAR(ars)} ARS.`;
     copyText = `Recibis ${formatAR(num)} CUP con ${formatAR(ars)} ARS.`;
     lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} CUP.`;
+    showCopyButton();
+  }
+  else if (from==='ARS' && to==='CUP_EF') {
+    if (num < MIN_ARS_CUP_EF) {
+      out.textContent = `ARS ≥ ${formatAR(MIN_ARS_CUP_EF)}.`;
+      return;
+    }
+    const cup = Math.round(arsToCupEfectivo(num));
+    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(cup)} CUP Efectivo.`;
+    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(cup)} CUP Efectivo.`;
+    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(cup)} CUP Efectivo.`;
+    showCopyButton();
+  }
+  else if (from==='CUP_EF' && to==='ARS') {
+    if (num < MIN_CUP_EF) {
+      out.textContent = `CUP Efectivo ≥ ${formatAR(MIN_CUP_EF)}.`;
+      return;
+    }
+    const ars = Math.round(cupEfectivoToArs(num));
+    out.textContent = `💲 Recibis aprox. ${formatAR(num)} CUP Efectivo con ${formatAR(ars)} ARS.`;
+    copyText = `Recibis ${formatAR(num)} CUP Efectivo con ${formatAR(ars)} ARS.`;
+    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} CUP Efectivo.`;
     showCopyButton();
   }
   else if (from==='ARS' && to==='MLC') {
@@ -252,4 +303,3 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('currencyTo').addEventListener('change', updateDisabledOptions);
   document.getElementById('amount').addEventListener('input', enforceNumericInput);
 });
-
