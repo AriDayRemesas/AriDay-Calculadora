@@ -38,9 +38,6 @@ function enforceNumericInput(event) {
 }
 
 function updateDisabledOptions() {
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/13763142-fcf2-440f-9e0f-e70b52ac5a4c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:updateDisabledOptions:entry',message:'updateDisabledOptions entry',data:{from:document.getElementById('currencyFrom')?.value,to:document.getElementById('currencyTo')?.value,toHasARS:!!document.getElementById('currencyTo')?.querySelector('option[value="ARS"]')},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   const from = document.getElementById('currencyFrom').value;
   const toSelect = document.getElementById('currencyTo');
   for (let opt of toSelect.options) {
@@ -56,22 +53,13 @@ function updateDisabledOptions() {
   if (from === toSelect.value) {
     toSelect.value = (from === 'ARS') ? 'CUP' : 'ARS';
   }
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/13763142-fcf2-440f-9e0f-e70b52ac5a4c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:updateDisabledOptions:exit',message:'updateDisabledOptions exit',data:{from:document.getElementById('currencyFrom')?.value,to:document.getElementById('currencyTo')?.value},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 }
 
 function swapCurrencies() {
   const f = document.getElementById('currencyFrom');
   const t = document.getElementById('currencyTo');
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/13763142-fcf2-440f-9e0f-e70b52ac5a4c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:swapCurrencies:before',message:'swap before',data:{from:f.value,to:t.value,fromDisabled:f.disabled,toDisabled:t.disabled},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
   [f.value, t.value] = [t.value, f.value];
   updateDisabledOptions();
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/13763142-fcf2-440f-9e0f-e70b52ac5a4c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:swapCurrencies:after',message:'swap after',data:{from:f.value,to:t.value,fromDisabled:f.disabled,toDisabled:t.disabled},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'C'})}).catch(()=>{});
-  // #endregion
   document.getElementById('amount').value = '';
   document.getElementById('resultText').textContent = '';
   lastResult = '';
@@ -311,9 +299,6 @@ function sendToWhatsApp() {
 window.addEventListener('DOMContentLoaded', async () => {
   await loadPrices();
   updateDisabledOptions();
-  // #region agent log
-  fetch('http://127.0.0.1:7245/ingest/13763142-fcf2-440f-9e0f-e70b52ac5a4c',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'script.js:DOMContentLoaded',message:'DOMContentLoaded after init',data:{from:document.getElementById('currencyFrom')?.value,to:document.getElementById('currencyTo')?.value,fromDisabled:document.getElementById('currencyFrom')?.disabled,toHasARS:!!document.getElementById('currencyTo')?.querySelector('option[value="ARS"]')},timestamp:Date.now(),sessionId:'debug-session',runId:'pre-fix',hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   document.getElementById('currencyFrom').addEventListener('change', updateDisabledOptions);
   document.getElementById('currencyTo').addEventListener('change', updateDisabledOptions);
   document.getElementById('amount').addEventListener('input', enforceNumericInput);
