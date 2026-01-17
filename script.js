@@ -2,17 +2,46 @@ let MIN_ARS, MIN_CUP, MIN_MLC, MIN_SALDO, RATE_MIN, RATE_MAX, RATE_MLC, RATE_USD
 let MIN_ARS_CUP_EF, MIN_CUP_EF, RATE_MIN_CUP_EF, RATE_MAX_CUP_EF;
 let lastResult = '';
 let copyText = '';
+let fixedSide = 'from';
 
 function formatAR(num) {
   return num.toLocaleString('es-AR');
 }
 
-function ensureArsFrom() {
-  const fromSelect = document.getElementById('currencyFrom');
-  if (fromSelect.value !== 'ARS') {
-    fromSelect.value = 'ARS';
+function firstNonArsValue(selectEl) {
+  for (let opt of selectEl.options) {
+    if (opt.value !== 'ARS') return opt.value;
   }
-  fromSelect.disabled = true;
+  return '';
+}
+
+function applyFixedState() {
+  const fromSelect = document.getElementById('currencyFrom');
+  const toSelect = document.getElementById('currencyTo');
+  const fixedIsFrom = fixedSide === 'from';
+  const fixedSelect = fixedIsFrom ? fromSelect : toSelect;
+  const editableSelect = fixedIsFrom ? toSelect : fromSelect;
+
+  fixedSelect.disabled = true;
+  editableSelect.disabled = false;
+  fixedSelect.value = 'ARS';
+
+  for (let opt of fixedSelect.options) {
+    if (opt.value === 'ARS') {
+      opt.hidden = false;
+      opt.disabled = false;
+    }
+  }
+
+  for (let opt of editableSelect.options) {
+    const isArs = opt.value === 'ARS';
+    opt.hidden = isArs;
+    opt.disabled = isArs;
+  }
+
+  if (editableSelect.value === 'ARS') {
+    editableSelect.value = firstNonArsValue(editableSelect);
+  }
 }
 
 async function loadPrices() {
@@ -46,23 +75,26 @@ function enforceNumericInput(event) {
 }
 
 function updateDisabledOptions() {
-  ensureArsFrom();
-  const from = document.getElementById('currencyFrom').value;
+  applyFixedState();
+  const fromSelect = document.getElementById('currencyFrom');
   const toSelect = document.getElementById('currencyTo');
-  for (let opt of toSelect.options) {
-    opt.disabled = (
-      opt.value === from ||
-      (from === 'CUP' && opt.value === 'MLC') ||
-      (from === 'CUP_EF' && opt.value === 'MLC') ||
-      (from === 'MLC' && opt.value === 'CUP') ||
-      (from === 'MLC' && opt.value === 'CUP_EF') ||
-      ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
-    );
-  }
-  if (toSelect.value === 'ARS') {
-    toSelect.value = 'CUP';
-  } else if (from === toSelect.value) {
-    toSelect.value = (from === 'ARS') ? 'CUP' : 'ARS';
+
+  if (fixedSide === 'from') {
+    const from = fromSelect.value;
+    for (let opt of toSelect.options) {
+      if (opt.value === 'ARS') continue;
+      opt.disabled = (
+        opt.value === from ||
+        (from === 'CUP' && opt.value === 'MLC') ||
+        (from === 'CUP_EF' && opt.value === 'MLC') ||
+        (from === 'MLC' && opt.value === 'CUP') ||
+        (from === 'MLC' && opt.value === 'CUP_EF') ||
+        ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
+      );
+    }
+    if (toSelect.value === 'ARS') {
+      toSelect.value = firstNonArsValue(toSelect);
+    }
   }
 }
 
@@ -71,11 +103,12 @@ function swapCurrencies() {
   const t = document.getElementById('currencyTo');
   const prevFrom = f.value;
   const prevTo = t.value;
-  f.value = 'ARS';
-  if (prevFrom !== 'ARS') {
-    t.value = prevFrom;
-  } else if (prevTo === 'ARS') {
-    t.value = 'CUP';
+  if (fixedSide === 'from') {
+    fixedSide = 'to';
+    f.value = prevTo === 'ARS' ? firstNonArsValue(f) : prevTo;
+  } else {
+    fixedSide = 'from';
+    t.value = prevFrom === 'ARS' ? firstNonArsValue(t) : prevFrom;
   }
   updateDisabledOptions();
   document.getElementById('amount').value = '';
@@ -301,7 +334,7 @@ function calculate() {
     out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS ⇄ Saldo).';
   }
   else {
-    out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
+    out.textContent = '⛔ Conversión no permitida.';
   }
 }
 
@@ -316,7 +349,7 @@ function sendToWhatsApp() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   await loadPrices();
-  ensureArsFrom();
+  fixedSide = 'from';
   updateDisabledOptions();
   document.getElementById('currencyFrom').addEventListener('change', updateDisabledOptions);
   document.getElementById('currencyTo').addEventListener('change', updateDisabledOptions);
