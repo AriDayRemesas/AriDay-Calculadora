@@ -7,6 +7,14 @@ function formatAR(num) {
   return num.toLocaleString('es-AR');
 }
 
+function ensureArsFrom() {
+  const fromSelect = document.getElementById('currencyFrom');
+  if (fromSelect.value !== 'ARS') {
+    fromSelect.value = 'ARS';
+  }
+  fromSelect.disabled = true;
+}
+
 async function loadPrices() {
   try {
     const response = await fetch('prices.json', { cache: 'no-store' });
@@ -38,6 +46,7 @@ function enforceNumericInput(event) {
 }
 
 function updateDisabledOptions() {
+  ensureArsFrom();
   const from = document.getElementById('currencyFrom').value;
   const toSelect = document.getElementById('currencyTo');
   for (let opt of toSelect.options) {
@@ -50,7 +59,9 @@ function updateDisabledOptions() {
       ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
     );
   }
-  if (from === toSelect.value) {
+  if (toSelect.value === 'ARS') {
+    toSelect.value = 'CUP';
+  } else if (from === toSelect.value) {
     toSelect.value = (from === 'ARS') ? 'CUP' : 'ARS';
   }
 }
@@ -58,7 +69,14 @@ function updateDisabledOptions() {
 function swapCurrencies() {
   const f = document.getElementById('currencyFrom');
   const t = document.getElementById('currencyTo');
-  [f.value, t.value] = [t.value, f.value];
+  const prevFrom = f.value;
+  const prevTo = t.value;
+  f.value = 'ARS';
+  if (prevFrom !== 'ARS') {
+    t.value = prevFrom;
+  } else if (prevTo === 'ARS') {
+    t.value = 'CUP';
+  }
   updateDisabledOptions();
   document.getElementById('amount').value = '';
   document.getElementById('resultText').textContent = '';
@@ -298,6 +316,7 @@ function sendToWhatsApp() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   await loadPrices();
+  ensureArsFrom();
   updateDisabledOptions();
   document.getElementById('currencyFrom').addEventListener('change', updateDisabledOptions);
   document.getElementById('currencyTo').addEventListener('change', updateDisabledOptions);
