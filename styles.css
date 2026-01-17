@@ -34,10 +34,17 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('A.zip - 2.png');
-  background-size: 60% auto;
-  background-position: center;
-  background-repeat: no-repeat;
+  background-image:
+    url('A.zip - 2.png'),
+    url('A.zip - 2.png');
+  background-size:
+    120px auto,
+    120px auto;
+  background-position:
+    0 0,
+    60px 60px;
+  background-repeat: repeat;
+  background-repeat: repeat;
   opacity: 0.08;
   mix-blend-mode: multiply;
   pointer-events: none;
@@ -278,7 +285,8 @@ a:hover {
   }
 
   body::before {
-    background-size: 40% auto;
+    background-size: 120px auto, 120px auto;
+    background-position: 0 0, 60px 60px;
   }
 
   h2 {
@@ -298,7 +306,8 @@ a:hover {
   }
 
   body::before {
-    background-size: 35% auto;
+    background-size: 120px auto, 120px auto;
+    background-position: 0 0, 60px 60px;
   }
 }
 
@@ -317,7 +326,8 @@ a:hover {
   }
 
   body::before {
-    background-size: 80% auto;
+    background-size: 100px auto, 100px auto;
+    background-position: 0 0, 50px 50px;
     opacity: 0.06;
   }
 
