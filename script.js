@@ -62,6 +62,48 @@ async function loadPrices() {
     MIN_CUP_EF = prices.MIN_CUP_EF;
     RATE_MIN_CUP_EF = prices.RATE_MIN_CUP_EF;
     RATE_MAX_CUP_EF = prices.RATE_MAX_CUP_EF;
+
+    try {
+      const adjResponse = await fetch('adjustments.json', { cache: 'no-store' });
+      if (adjResponse.ok) {
+        const adj = await adjResponse.json();
+        const ajusteBase = Number(adj.AJUSTE_BASE);
+        const cambio = Number(adj.CAMBIO);
+        const difRateMax = Number(adj.DIF_RATE_MAX);
+        if (
+          Number.isFinite(ajusteBase) &&
+          Number.isFinite(cambio) &&
+          Number.isFinite(difRateMax) &&
+          cambio !== 0
+        ) {
+          const rateMin = ajusteBase / cambio;
+          const rateMax = rateMin - difRateMax;
+          if (Number.isFinite(rateMin) && Number.isFinite(rateMax)) {
+            RATE_MIN = rateMin;
+            RATE_MAX = rateMax;
+          }
+        }
+
+        const ajusteBaseEf = Number(adj.AJUSTE_BASE_EF);
+        const cambioEf = Number(adj.CAMBIO_EF);
+        const difRateMaxEf = Number(adj.DIF_RATE_MAX_EF);
+        if (
+          Number.isFinite(ajusteBaseEf) &&
+          Number.isFinite(cambioEf) &&
+          Number.isFinite(difRateMaxEf) &&
+          cambioEf !== 0
+        ) {
+          const rateMinEf = ajusteBaseEf / cambioEf;
+          const rateMaxEf = rateMinEf - difRateMaxEf;
+          if (Number.isFinite(rateMinEf) && Number.isFinite(rateMaxEf)) {
+            RATE_MIN_CUP_EF = rateMinEf;
+            RATE_MAX_CUP_EF = rateMaxEf;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Adjustments not applied:', error);
+    }
   } catch (error) {
     console.error('Error loading prices:', error);
   }
@@ -334,7 +376,7 @@ function calculate() {
     out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS ⇄ Saldo).';
   }
   else {
-    out.textContent = '⛔ Conversión no permitida.';
+    out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
   }
 }
 
