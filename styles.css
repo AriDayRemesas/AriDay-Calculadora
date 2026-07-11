@@ -13,6 +13,33 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+body[data-source="ARS"] {
+  --color-primary: #75AADB;
+  --color-primary-dark: #004B87;
+  --color-background: #E6F2FA;
+  --color-input-bg: #F8FCFF;
+  --shadow-card: 0 4px 20px rgba(117, 170, 219, 0.25);
+  --shadow-hover: 0 6px 25px rgba(117, 170, 219, 0.35);
+}
+
+body[data-source="MXN"] {
+  --color-primary: #006847;
+  --color-primary-dark: #8B1538;
+  --color-background: #F0F6F2;
+  --color-input-bg: #F8FBF9;
+  --shadow-card: 0 4px 20px rgba(0, 104, 71, 0.2);
+  --shadow-hover: 0 6px 25px rgba(0, 104, 71, 0.3);
+}
+
+body[data-source="BRL"] {
+  --color-primary: #2EAF4A;
+  --color-primary-dark: #006B3F;
+  --color-background: #EAF6ED;
+  --color-input-bg: #F6FBF7;
+  --shadow-card: 0 4px 20px rgba(46, 175, 74, 0.2);
+  --shadow-hover: 0 6px 25px rgba(46, 175, 74, 0.3);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -25,6 +52,7 @@ body {
   background: var(--color-background);
   min-height: 100vh;
   position: relative;
+  transition: background 0.35s ease;
 }
 
 body::before {
@@ -35,8 +63,8 @@ body::before {
   width: 100%;
   height: 100%;
   background-image:
-    url('A.zip - 2.png'),
-    url('A.zip - 2.png');
+    url('icon.png'),
+    url('icon.png');
   background-size:
     120px auto,
     120px auto;
@@ -63,6 +91,7 @@ body::before {
   position: relative;
   z-index: 1;
   backdrop-filter: blur(10px);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease;
 }
 
 h2 {
@@ -71,6 +100,7 @@ h2 {
   color: var(--color-primary);
   font-weight: 700;
   letter-spacing: -0.02em;
+  transition: color 0.35s ease;
 }
 
 p.subtitle {
@@ -92,6 +122,14 @@ label {
   justify-content: center;
   margin-top: 0.75rem;
   gap: 0.5rem;
+}
+
+.selector-group.swapped {
+  flex-direction: row-reverse;
+}
+
+.selector-column {
+  flex: 1;
 }
 
 select {
@@ -169,14 +207,35 @@ input::placeholder {
   -webkit-tap-highlight-color: transparent;
 }
 
+.selector-group.swapped .swap-btn {
+  transform: rotate(180deg);
+}
+
 .swap-btn:hover {
   background: var(--color-primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 75, 135, 0.4);
 }
 
+.selector-group.swapped .swap-btn:hover {
+  transform: rotate(180deg) translateY(-2px);
+}
+
 .swap-btn:active {
   transform: translateY(0);
+}
+
+.selector-group.swapped .swap-btn:active {
+  transform: rotate(180deg);
+}
+
+.direction-summary {
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  text-align: center;
+  opacity: 0.92;
 }
 
 button:not(.swap-btn):not(.btn-enviar):not(.copy-btn) {
@@ -221,17 +280,37 @@ button:not(.swap-btn):not(.btn-enviar):not(.copy-btn):active {
   transform: translateY(0);
 }
 
-.result {
+.result-area {
   margin-top: 1.5rem;
+}
+
+.result-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.result {
+  flex: 1;
+  margin-top: 0;
   font-weight: 600;
   font-size: 1.0625rem;
   color: var(--color-primary-dark);
   line-height: 1.5;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   min-height: 2.5rem;
-  flex-wrap: wrap;
+}
+
+.result-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-primary-dark);
+  line-height: 1.45;
+  opacity: 0.92;
+}
+
+.result-note[hidden] {
+  display: none;
 }
 
 .copy-btn {
@@ -244,14 +323,17 @@ button:not(.swap-btn):not(.btn-enviar):not(.copy-btn):active {
   font-size: 1rem;
   min-width: 44px;
   min-height: 44px;
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   transition: var(--transition);
   flex-shrink: 0;
   margin: 0;
-  margin-top: 0.5rem;
   width: auto;
+}
+
+.copy-btn[hidden] {
+  display: none;
 }
 
 .copy-btn:hover {
@@ -262,6 +344,27 @@ button:not(.swap-btn):not(.btn-enviar):not(.copy-btn):active {
 
 .copy-btn:active {
   transform: scale(0.95);
+}
+
+.valores-link {
+  margin-top: 0.5rem;
+  text-align: right;
+  font-size: 0.9375rem;
+}
+
+.terms {
+  margin-top: 1rem;
+  color: var(--color-primary-dark);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.terms ul {
+  margin: 0.5rem 0 0 1rem;
+}
+
+.terms li {
+  margin: 0.35rem 0;
 }
 
 a {
@@ -336,6 +439,10 @@ a:hover {
     gap: 0.75rem;
   }
 
+  .selector-group.swapped {
+    flex-direction: column-reverse;
+  }
+
   .swap-btn {
     transform: rotate(90deg);
     margin: 0.5rem 0;
@@ -344,6 +451,10 @@ a:hover {
     min-width: 64px;
     min-height: 64px;
     font-size: 1.75rem;
+  }
+
+  .selector-group.swapped .swap-btn {
+    transform: rotate(-90deg);
   }
 }
 
