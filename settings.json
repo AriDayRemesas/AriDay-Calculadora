@@ -1,0 +1,224 @@
+{
+  "ARS": {
+    "classic": {
+      "Rbase": 1520,
+      "Rcambio": 0.9212112,
+      "Rdifer": 0,
+      "Mmin": 37000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Clasico",
+      "order": 5
+    },
+    "cup_cash": {
+      "Rbase": 1520,
+      "Rcambio": 470,
+      "Rdifer": 0.02,
+      "Mmin": 10000,
+      "Mmax": 363000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Cup Efectivo",
+      "order": 1
+    },
+    "cup_electronic": {
+      "Rbase": 1520,
+      "Rcambio": 550,
+      "Rdifer": 0.02,
+      "Mmin": 10000,
+      "Mmax": 363000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Cup Tarjeta",
+      "order": 2
+    },
+    "mlc": {
+      "Rbase": 1520,
+      "Rcambio": 1,
+      "Rdifer": 0,
+      "Mmin": 10000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "MLC",
+      "order": 3
+    },
+    "saldo_movil": {
+      "Rbase": 1520,
+      "Rcambio": 136.8,
+      "Rdifer": 0,
+      "Mmin": 2700,
+      "Mmax": 100000,
+      "Commission": 0,
+      "Exponent": 0,
+      "enabled": true,
+      "label": "Saldo Movil",
+      "order": 6
+    },
+    "usd_cash": {
+      "Rbase": 1520,
+      "Rcambio": 0.9212112,
+      "Rdifer": 0,
+      "Mmin": 37000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "USD Efectivo",
+      "order": 4
+    }
+  },
+  "MXN": {
+    "classic": {
+      "Rbase": 1520,
+      "Rcambio": 0.9212112,
+      "Rdifer": 0,
+      "Mmin": 37000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Clasico",
+      "order": 5
+    },
+    "cup_cash": {
+      "Rbase": 1520,
+      "Rcambio": 470,
+      "Rdifer": 0.02,
+      "Mmin": 10000,
+      "Mmax": 363000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Cup Efectivo",
+      "order": 1
+    },
+    "cup_electronic": {
+      "Rbase": 1520,
+      "Rcambio": 550,
+      "Rdifer": 0.02,
+      "Mmin": 10000,
+      "Mmax": 363000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Cup Tarjeta",
+      "order": 2
+    },
+    "mlc": {
+      "Rbase": 1520,
+      "Rcambio": 1,
+      "Rdifer": 0,
+      "Mmin": 10000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "MLC",
+      "order": 3
+    },
+    "saldo_movil": {
+      "Rbase": 1520,
+      "Rcambio": 136.8,
+      "Rdifer": 0,
+      "Mmin": 2700,
+      "Mmax": 100000,
+      "Commission": 0,
+      "Exponent": 0,
+      "enabled": true,
+      "label": "Saldo Movil",
+      "order": 6
+    },
+    "usd_cash": {
+      "Rbase": 1520,
+      "Rcambio": 0.9212112,
+      "Rdifer": 0,
+      "Mmin": 37000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "USD Efectivo",
+      "order": 4
+    }
+  },
+  "BRL": {
+    "classic": {
+      "Rbase": 1520,
+      "Rcambio": 0.9212112,
+      "Rdifer": 0,
+      "Mmin": 37000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Clasico",
+      "order": 5
+    },
+    "cup_cash": {
+      "Rbase": 1520,
+      "Rcambio": 470,
+      "Rdifer": 0.02,
+      "Mmin": 10000,
+      "Mmax": 363000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Cup Efectivo",
+      "order": 1
+    },
+    "cup_electronic": {
+      "Rbase": 1520,
+      "Rcambio": 550,
+      "Rdifer": 0.02,
+      "Mmin": 10000,
+      "Mmax": 363000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "Cup Tarjeta",
+      "order": 2
+    },
+    "mlc": {
+      "Rbase": 1520,
+      "Rcambio": 1,
+      "Rdifer": 0,
+      "Mmin": 10000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "MLC",
+      "order": 3
+    },
+    "saldo_movil": {
+      "Rbase": 1520,
+      "Rcambio": 136.8,
+      "Rdifer": 0,
+      "Mmin": 2700,
+      "Mmax": 100000,
+      "Commission": 0,
+      "Exponent": 0,
+      "enabled": true,
+      "label": "Saldo Movil",
+      "order": 6
+    },
+    "usd_cash": {
+      "Rbase": 1520,
+      "Rcambio": 0.9212112,
+      "Rdifer": 0,
+      "Mmin": 37000,
+      "Mmax": 1000000,
+      "Commission": 8,
+      "Exponent": 1.5,
+      "enabled": true,
+      "label": "USD Efectivo",
+      "order": 4
+    }
+  }
+}
