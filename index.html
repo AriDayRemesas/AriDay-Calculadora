@@ -7,12 +7,12 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>AriDay Remesas</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2">
 </head>
-<body>
+<body data-source="ARS">
 
   <div class="card">
-    <h2>🇦🇷 AriDay Remesas</h2>
+    <h2><span id="countryFlag" aria-hidden="true">🇦🇷</span> AriDay Remesas</h2>
     <p class="subtitle">
       <a href="https://wa.me/5491165218910" target="_blank">
         WhatsApp: +54 9 11 6521 8910
@@ -21,29 +21,35 @@
 
     <label>Convertir de → a:</label>
     <div class="selector-group">
-      <select id="currencyFrom" disabled>
-        <option value="ARS">ARS</option>
-        <option value="CUP_EF">CUP Efectivo</option>
-        <option value="CUP">CUP</option>
-        <option value="MLC">MLC</option>
-        <option value="USD">USD Efectivo</option>
-        <option value="SALDO">Saldo Móvil</option>
-      </select>
+      <div class="selector-column">
+        <select id="currencyFrom" disabled>
+          <option value="">Cargando...</option>
+        </select>
+      </div>
       <button type="button" class="swap-btn" onclick="swapCurrencies()">⇄</button>
-      <select id="currencyTo">
-        <option value="ARS">ARS</option>
-        <option value="CUP_EF">CUP Efectivo</option>
-        <option value="CUP">CUP</option>
-        <option value="MLC">MLC</option>
-        <option value="USD">USD Efectivo</option>
-        <option value="SALDO">Saldo Móvil</option>
-      </select>
+      <div class="selector-column">
+        <select id="currencyTo" disabled>
+          <option value="">Cargando...</option>
+        </select>
+      </div>
     </div>
 
+    <div class="direction-summary" id="directionSummary">Enviar: ARS | Recibir: Modo</div>
     <label for="amount">Ingrese monto (máx. 9 dígitos):</label>
     <input type="text" id="amount" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 15.000" maxlength="13" />
 
-    <div class="result" id="resultText"></div>
+    <div class="result-area">
+      <div class="result-row">
+        <div class="result" id="resultText"></div>
+        <button type="button" class="copy-btn" id="copyResultBtn" hidden aria-label="Copiar resultado" onclick="copyResult()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+        </button>
+      </div>
+      <p class="result-note" id="resultNote" hidden></p>
+    </div>
     <button onclick="calculate()">Calcular</button>
     <button class="btn-enviar" onclick="sendToWhatsApp()">Enviar</button>
     <div class="valores-link">
@@ -51,6 +57,6 @@
     </div>
   </div>
 
-  <script src="script.js"></script>
+  <script src="script.js?v=3"></script>
 </body>
 </html>
