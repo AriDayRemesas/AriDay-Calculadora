@@ -73,32 +73,95 @@ function hasOptionValue(selectElement, value) {
   return Array.from(selectElement.options).some((option) => option.value === value);
 }
 
-function parseAmount(raw) {
-  if (typeof raw !== "string") return NaN;
-  const cleaned = raw.trim().replace(/\s/g, "");
-  if (!cleaned) return NaN;
+function extractAmountParts(raw) {
+  const cleaned = String(raw).trim().replace(/\s/g, "").replace(/\./g, "");
+  const commaIndex = cleaned.indexOf(",");
+  let intPart = "";
+  let decPart = "";
+  let trailingComma = false;
 
-  const onlyAllowed = cleaned.replace(/[^0-9.,]/g, "");
-  if (!onlyAllowed) return NaN;
-
-  const hasDot = onlyAllowed.includes(".");
-  const hasComma = onlyAllowed.includes(",");
-
-  let normalized = onlyAllowed;
-
-  if (hasDot && hasComma) {
-    normalized = onlyAllowed.replace(/\./g, "").replace(",", ".");
-  } else if (hasComma) {
-    normalized = onlyAllowed.replace(",", ".");
-  } else if (hasDot) {
-    const parts = onlyAllowed.split(".");
-    if (parts.length > 2) {
-      normalized = onlyAllowed.replace(/\./g, "");
-    }
+  if (commaIndex === -1) {
+    intPart = cleaned.replace(/\D/g, "");
+  } else {
+    intPart = cleaned.slice(0, commaIndex).replace(/\D/g, "");
+    decPart = cleaned.slice(commaIndex + 1).replace(/\D/g, "").slice(0, 2);
+    trailingComma = cleaned.endsWith(",");
   }
 
+  intPart = intPart.slice(0, 9);
+  return { intPart, decPart, trailingComma };
+}
+
+function formatAmountInputDisplay(parts) {
+  const { intPart, decPart, trailingComma } = parts;
+  if (!intPart && !decPart && !trailingComma) return "";
+
+  const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  if (decPart) return `${formattedInt},${decPart}`;
+  if (trailingComma) return `${formattedInt},`;
+  return formattedInt;
+}
+
+function parseAmount(raw) {
+  const { intPart, decPart } = extractAmountParts(raw);
+  if (!intPart && !decPart) return NaN;
+
+  const normalized = decPart ? `${intPart || "0"}.${decPart}` : intPart;
   const value = Number(normalized);
   return Number.isFinite(value) ? value : NaN;
+}
+
+function setAmountInputValue(value) {
+  const { amountInput } = getDom();
+  if (!Number.isFinite(value) || value <= 0) {
+    amountInput.value = "";
+    return;
+  }
+
+  const rounded = Math.round(value * 100) / 100;
+  const isInteger = Math.abs(rounded - Math.round(rounded)) < 1e-9;
+
+  if (isInteger) {
+    amountInput.value = formatAmountInputDisplay({
+      intPart: String(Math.round(rounded)),
+      decPart: "",
+      trailingComma: false
+    });
+    return;
+  }
+
+  const [intPart, decPart] = rounded.toFixed(2).split(".");
+  amountInput.value = formatAmountInputDisplay({
+    intPart,
+    decPart,
+    trailingComma: false
+  });
+}
+
+function enforceAmountInput(event) {
+  const input = event.target;
+  const formatted = formatAmountInputDisplay(extractAmountParts(input.value));
+  if (input.value !== formatted) {
+    input.value = formatted;
+  }
+}
+
+function handleAmountKeydown(event) {
+  if (event.key === ".") {
+    event.preventDefault();
+    return;
+  }
+
+  if (event.key === ",") {
+    if (event.target.value.includes(",")) {
+      event.preventDefault();
+    }
+    return;
+  }
+
+  if (event.key === "Enter") {
+    void calculate();
+  }
 }
 
 function formatAmount(value, maxFractionDigits = 2) {
@@ -551,7 +614,7 @@ async function applySaldoRecommendation(saldoAmount) {
     return;
   }
 
-  amountInput.value = formatAmount(Math.ceil(conversion.amountArs), 0);
+  setAmountInputValue(Math.ceil(conversion.amountArs));
   await calculate();
 }
 
@@ -591,9 +654,8 @@ async function init() {
     resultText.textContent = "No se pudo cargar la configuración.";
   }
 
-  amountInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") calculate();
-  });
+  amountInput.addEventListener("input", enforceAmountInput);
+  amountInput.addEventListener("keydown", handleAmountKeydown);
 
   const syncModeSelection = () => {
     const { sourceSelect, modeSelect } = getSelectorRoles();
