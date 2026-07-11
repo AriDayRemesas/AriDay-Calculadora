@@ -143,6 +143,13 @@ function applySelectorLayout() {
       ? `Ingresar: ${sourceCurrency} | Recibir: ${modeLabel}`
       : `Ingresar: ${modeLabel} | ${sourceCurrency} requerido`;
   }
+  updateSaldoRecommendations();
+}
+
+function updateSaldoRecommendations() {
+  const saldoRecommendations = document.getElementById("saldoRecommendations");
+  if (!saldoRecommendations) return;
+  saldoRecommendations.hidden = selectedModeDocId !== "saldo_movil";
 }
 
 function validateSetting(docId, data) {
@@ -509,6 +516,45 @@ function swapCurrencies() {
   normalizePair();
 }
 
+async function applySaldoRecommendation(saldoAmount) {
+  if (selectedModeDocId !== "saldo_movil") return;
+
+  const { amountInput } = getDom();
+
+  if (settingsByDocId.size === 0 || loadedSettingsSource !== sourceCurrency) {
+    try {
+      ensureSourceSettings(sourceCurrency);
+      useSettingsForSource(sourceCurrency);
+      applyOptionsFromSettings();
+    } catch (error) {
+      renderError("No se pudo cargar la configuración.");
+      console.error(error);
+      return;
+    }
+  }
+
+  const setting = settingsByDocId.get("saldo_movil");
+  if (!setting) {
+    renderError("Saldo Movil no esta disponible.");
+    return;
+  }
+
+  if (!sourceOnLeft) {
+    sourceOnLeft = true;
+    applyOptionsFromSettings();
+    normalizePair();
+  }
+
+  const conversion = convertModeToArs(saldoAmount, setting);
+  if (!Number.isFinite(conversion.amountArs) || conversion.amountArs <= 0) {
+    renderError("No se pudo calcular el monto para ese saldo.");
+    return;
+  }
+
+  amountInput.value = formatAmount(Math.ceil(conversion.amountArs), 0);
+  await calculate();
+}
+
 function sendToWhatsApp() {
   const amountInput = document.getElementById("amount");
   const inputAmount = parseAmount(amountInput.value);
@@ -590,5 +636,6 @@ window.calculate = calculate;
 window.swapCurrencies = swapCurrencies;
 window.sendToWhatsApp = sendToWhatsApp;
 window.copyResult = copyResult;
+window.applySaldoRecommendation = applySaldoRecommendation;
 
 init();
