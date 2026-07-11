@@ -1,400 +1,594 @@
-let MIN_ARS, MIN_CUP, MIN_MLC, MIN_SALDO, RATE_MIN, RATE_MAX, RATE_MLC, RATE_USD, USD_EXTRA, CUP_POR_SALDO;
-let MIN_ARS_CUP_EF, MIN_CUP_EF, RATE_MIN_CUP_EF, RATE_MAX_CUP_EF;
-let lastResult = '';
-let copyText = '';
-let fixedSide = 'from';
+const SETTINGS_URL = "settings.json";
+const SELECTED_SOURCE_KEY = "selected_source_currency_v1";
+const COUNTRY_FLAGS = {
+  ARS: "🇦🇷",
+  MXN: "🇲🇽",
+  BRL: "🇧🇷"
+};
 
-function formatAR(num) {
-  return num.toLocaleString('es-AR');
+let sourceCurrencies = [];
+let settingsByDocId = new Map();
+let settingsList = [];
+let settingsBySource = new Map();
+let loadedSettingsSource = null;
+let lastCalculation = null;
+let lastCopyText = null;
+let sourceOnLeft = true;
+let selectedModeDocId = null;
+let sourceCurrency = "ARS";
+
+function getDom() {
+  return {
+    selectorGroup: document.querySelector(".selector-group"),
+    directionSummary: document.getElementById("directionSummary"),
+    fromSelect: document.getElementById("currencyFrom"),
+    toSelect: document.getElementById("currencyTo"),
+    amountInput: document.getElementById("amount"),
+    resultText: document.getElementById("resultText"),
+    copyResultBtn: document.getElementById("copyResultBtn"),
+    resultNote: document.getElementById("resultNote")
+  };
 }
 
-function firstNonArsValue(selectEl) {
-  for (let opt of selectEl.options) {
-    if (opt.value !== 'ARS') return opt.value;
-  }
-  return '';
-}
-
-function applyFixedState() {
-  const fromSelect = document.getElementById('currencyFrom');
-  const toSelect = document.getElementById('currencyTo');
-  const fixedIsFrom = fixedSide === 'from';
-  const fixedSelect = fixedIsFrom ? fromSelect : toSelect;
-  const editableSelect = fixedIsFrom ? toSelect : fromSelect;
-
-  fixedSelect.disabled = true;
-  editableSelect.disabled = false;
-  fixedSelect.value = 'ARS';
-
-  for (let opt of fixedSelect.options) {
-    if (opt.value === 'ARS') {
-      opt.hidden = false;
-      opt.disabled = false;
-    }
-  }
-
-  for (let opt of editableSelect.options) {
-    const isArs = opt.value === 'ARS';
-    opt.hidden = isArs;
-    opt.disabled = isArs;
-  }
-
-  if (editableSelect.value === 'ARS') {
-    editableSelect.value = firstNonArsValue(editableSelect);
-  }
-}
-
-async function loadPrices() {
+function readStoredSourceCurrency() {
   try {
-    const response = await fetch('prices.json', { cache: 'no-store' });
-    const prices = await response.json();
-    MIN_ARS = prices.MIN_ARS;
-    MIN_CUP = prices.MIN_CUP;
-    MIN_MLC = prices.MIN_MLC;
-    MIN_SALDO = prices.MIN_SALDO;
-    RATE_MIN = prices.RATE_MIN;
-    RATE_MAX = prices.RATE_MAX;
-    RATE_MLC = prices.RATE_MLC;
-    RATE_USD = prices.RATE_USD;
-    USD_EXTRA = prices.USD_EXTRA;
-    CUP_POR_SALDO = prices.CUP_POR_SALDO;
-    MIN_ARS_CUP_EF = prices.MIN_ARS_CUP_EF;
-    MIN_CUP_EF = prices.MIN_CUP_EF;
-    RATE_MIN_CUP_EF = prices.RATE_MIN_CUP_EF;
-    RATE_MAX_CUP_EF = prices.RATE_MAX_CUP_EF;
+    const stored = localStorage.getItem(SELECTED_SOURCE_KEY);
+    if (stored && sourceCurrencies.includes(stored)) {
+      return stored;
+    }
+  } catch (_error) {
+    // Ignora errores de storage.
+  }
+  return sourceCurrencies[0] || "ARS";
+}
 
+function persistSourceCurrency(value) {
+  try {
+    localStorage.setItem(SELECTED_SOURCE_KEY, value);
+  } catch (_error) {
+    // Ignora errores de storage.
+  }
+}
+
+function currencyPrefix(currencyCode) {
+  return currencyCode === "BRL" ? "R$" : "$";
+}
+
+function applyCountryTheme(currency) {
+  document.body.dataset.source = currency;
+  const flagEl = document.getElementById("countryFlag");
+  if (flagEl) {
+    flagEl.textContent = COUNTRY_FLAGS[currency] || "🌎";
+  }
+}
+
+function getSelectorRoles() {
+  const { fromSelect, toSelect } = getDom();
+  return sourceOnLeft
+    ? { sourceSelect: fromSelect, modeSelect: toSelect }
+    : { sourceSelect: toSelect, modeSelect: fromSelect };
+}
+
+function hasOptionValue(selectElement, value) {
+  return Array.from(selectElement.options).some((option) => option.value === value);
+}
+
+function parseAmount(raw) {
+  if (typeof raw !== "string") return NaN;
+  const cleaned = raw.trim().replace(/\s/g, "");
+  if (!cleaned) return NaN;
+
+  const onlyAllowed = cleaned.replace(/[^0-9.,]/g, "");
+  if (!onlyAllowed) return NaN;
+
+  const hasDot = onlyAllowed.includes(".");
+  const hasComma = onlyAllowed.includes(",");
+
+  let normalized = onlyAllowed;
+
+  if (hasDot && hasComma) {
+    normalized = onlyAllowed.replace(/\./g, "").replace(",", ".");
+  } else if (hasComma) {
+    normalized = onlyAllowed.replace(",", ".");
+  } else if (hasDot) {
+    const parts = onlyAllowed.split(".");
+    if (parts.length > 2) {
+      normalized = onlyAllowed.replace(/\./g, "");
+    }
+  }
+
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : NaN;
+}
+
+function formatAmount(value, maxFractionDigits = 2) {
+  return new Intl.NumberFormat("es-AR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: maxFractionDigits
+  }).format(value);
+}
+
+function asModeValue(docId) {
+  return `MODE:${docId}`;
+}
+
+function parseModeValue(value) {
+  if (typeof value !== "string") return null;
+  if (!value.startsWith("MODE:")) return null;
+  return value.slice(5);
+}
+
+function getSettingBySelectValue(value) {
+  const docId = parseModeValue(value);
+  if (!docId) return null;
+  return settingsByDocId.get(docId) || null;
+}
+
+function getCurrentModeLabel() {
+  const { modeSelect } = getSelectorRoles();
+  const selectedOption = modeSelect?.options?.[modeSelect.selectedIndex];
+  if (selectedOption && selectedOption.textContent) {
+    return selectedOption.textContent.trim();
+  }
+  return "Destino";
+}
+
+function applySelectorLayout() {
+  const { selectorGroup, directionSummary } = getDom();
+  if (!selectorGroup) return;
+  selectorGroup.classList.toggle("swapped", !sourceOnLeft);
+  if (directionSummary) {
+    const modeLabel = getCurrentModeLabel();
+    directionSummary.textContent = sourceOnLeft
+      ? `Ingresar: ${sourceCurrency} | Recibir: ${modeLabel}`
+      : `Ingresar: ${modeLabel} | ${sourceCurrency} requerido`;
+  }
+}
+
+function validateSetting(docId, data) {
+  if (!data || typeof data !== "object") return null;
+
+  const numericKeys = ["Rbase", "Rcambio", "Rdifer", "Mmin", "Mmax", "Commission", "Exponent"];
+  for (const key of numericKeys) {
+    if (typeof data[key] !== "number" || !Number.isFinite(data[key])) return null;
+  }
+
+  if (data.Rcambio === 0) return null;
+  if (data.Rdifer < 0) return null;
+  if (data.Mmax <= data.Mmin) return null;
+  if (data.Mmin <= 0) return null;
+  const Rmin = data.Rbase / data.Rcambio;
+  const Rmax = Rmin - data.Rdifer;
+  if (!Number.isFinite(Rmin) || !Number.isFinite(Rmax) || Rmin <= 0 || Rmax <= 0) return null;
+
+  return {
+    docId,
+    Rbase: data.Rbase,
+    Rcambio: data.Rcambio,
+    Rdifer: data.Rdifer,
+    Mmin: data.Mmin,
+    Mmax: data.Mmax,
+    Commission: data.Commission,
+    Exponent: data.Exponent,
+    enabled: data.enabled === true,
+    label: typeof data.label === "string" && data.label.trim() ? data.label.trim() : null,
+    order: typeof data.order === "number" && Number.isFinite(data.order) ? data.order : 9999
+  };
+}
+
+function parseSettingsForSource(source, docs) {
+  if (!docs || typeof docs !== "object") {
+    throw new Error(`Configuracion invalida para ${source}.`);
+  }
+
+  const parsed = [];
+  for (const [docId, data] of Object.entries(docs)) {
+    const setting = validateSetting(docId, data);
+    if (setting && setting.enabled) parsed.push(setting);
+  }
+  parsed.sort((a, b) => a.order - b.order);
+
+  if (parsed.length === 0) {
+    throw new Error(`No hay configuraciones habilitadas para ${source}.`);
+  }
+
+  return parsed;
+}
+
+async function loadAllSettings() {
+  const response = await fetch(`${SETTINGS_URL}?t=${Date.now()}`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`No se pudo cargar ${SETTINGS_URL}.`);
+  }
+
+  const data = await response.json();
+  if (!data || typeof data !== "object") {
+    throw new Error("El archivo de configuracion no es valido.");
+  }
+
+  sourceCurrencies = Object.keys(data);
+  if (sourceCurrencies.length === 0) {
+    throw new Error("No hay monedas origen configuradas.");
+  }
+
+  settingsBySource = new Map();
+  for (const source of sourceCurrencies) {
+    settingsBySource.set(source, parseSettingsForSource(source, data[source]));
+  }
+}
+
+function useSettingsForSource(source) {
+  const current = settingsBySource.get(source) || [];
+  settingsList = current;
+  settingsByDocId = new Map(current.map((item) => [item.docId, item]));
+  loadedSettingsSource = source;
+}
+
+function ensureSourceSettings(source) {
+  const inMemory = settingsBySource.get(source);
+  if (Array.isArray(inMemory) && inMemory.length > 0) {
+    return inMemory;
+  }
+  throw new Error(`No se pudo cargar configuracion para ${source}.`);
+}
+
+function ensureValidSelection(selectElement) {
+  const currentOption = selectElement.options[selectElement.selectedIndex];
+  if (currentOption && !currentOption.disabled && !currentOption.hidden) return;
+
+  for (const option of Array.from(selectElement.options)) {
+    if (!option.disabled && !option.hidden) {
+      selectElement.value = option.value;
+      return;
+    }
+  }
+}
+
+function applyOptionsFromSettings() {
+  const { fromSelect, toSelect } = getDom();
+  const modeOptions = settingsList.map((setting) => ({
+    value: asModeValue(setting.docId),
+    label: setting.label || setting.docId
+  }));
+  const currentModeValue = selectedModeDocId ? asModeValue(selectedModeDocId) : null;
+  const defaultModeValue = modeOptions.length > 0 ? modeOptions[0].value : "";
+  const resolvedModeValue = currentModeValue && modeOptions.some((opt) => opt.value === currentModeValue)
+    ? currentModeValue
+    : defaultModeValue;
+
+  const buildSourceOnly = (select) => {
+    select.innerHTML = "";
+    for (const code of sourceCurrencies) {
+      const option = document.createElement("option");
+      option.value = code;
+      option.textContent = code;
+      select.appendChild(option);
+    }
+    if (hasOptionValue(select, sourceCurrency)) {
+      select.value = sourceCurrency;
+    }
+    select.disabled = false;
+  };
+
+  const buildModesOnly = (select) => {
+    select.innerHTML = "";
+    for (const modeOption of modeOptions) {
+      const option = document.createElement("option");
+      option.value = modeOption.value;
+      option.textContent = modeOption.label;
+      select.appendChild(option);
+    }
+    select.disabled = false;
+    if (resolvedModeValue && hasOptionValue(select, resolvedModeValue)) {
+      select.value = resolvedModeValue;
+    }
+    ensureValidSelection(select);
+  };
+
+  if (sourceOnLeft) {
+    buildSourceOnly(fromSelect);
+    buildModesOnly(toSelect);
+    selectedModeDocId = parseModeValue(toSelect.value);
+  } else {
+    buildModesOnly(fromSelect);
+    buildSourceOnly(toSelect);
+    selectedModeDocId = parseModeValue(fromSelect.value);
+  }
+
+  applySelectorLayout();
+}
+
+function calculateRate(amountArs, setting) {
+  const Rmin = setting.Rbase / setting.Rcambio;
+  const Rmax = Rmin - setting.Rdifer;
+
+  if (amountArs <= setting.Mmin) return Rmin;
+  if (amountArs >= setting.Mmax) return Rmax;
+
+  return Rmin - (((amountArs - setting.Mmin) / (setting.Mmax - setting.Mmin)) * (Rmin - Rmax));
+}
+
+function calculateDynamicCommission(amountArs, setting) {
+  if (amountArs < setting.Mmin) {
+    return setting.Commission * ((setting.Mmin / amountArs) ** setting.Exponent);
+  }
+  return 0;
+}
+
+function convertArsToMode(amountArs, setting) {
+  const rate = calculateRate(amountArs, setting);
+  const dynamicCommission = calculateDynamicCommission(amountArs, setting);
+  const result = (amountArs / rate) * (1 - (dynamicCommission / 100));
+  return { amountArs, rate, dynamicCommission, result };
+}
+
+function convertModeToArs(targetAmount, setting) {
+  let low = 0;
+  let high = Math.max(targetAmount * setting.Rcambio * 2, setting.Mmin * 2, 1000);
+
+  for (let i = 0; i < 40; i += 1) {
+    const probe = convertArsToMode(high, setting).result;
+    if (!Number.isFinite(probe) || probe >= targetAmount) break;
+    high *= 2;
+  }
+
+  for (let i = 0; i < 70; i += 1) {
+    const mid = (low + high) / 2;
+    const probe = convertArsToMode(mid, setting).result;
+
+    if (!Number.isFinite(probe) || probe < targetAmount) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+  }
+
+  return convertArsToMode(high, setting);
+}
+
+function renderError(message) {
+  const { resultText, copyResultBtn, resultNote } = getDom();
+  resultText.textContent = message;
+  if (copyResultBtn) copyResultBtn.hidden = true;
+  if (resultNote) {
+    resultNote.hidden = true;
+    resultNote.textContent = "";
+  }
+  lastCalculation = null;
+  lastCopyText = null;
+}
+
+function formatMessageOutput(calc) {
+  if (calc.modeDocId === "usd_cash") {
+    return formatAmount(Math.floor(calc.output), 0);
+  }
+  return formatAmount(calc.output, 2);
+}
+
+function buildWhatsAppMessage(calc) {
+  const hour = new Date().getHours();
+  const saludo = hour < 12 ? "buenos días" : hour < 19 ? "buenas tardes" : "buenas noches";
+  return [
+    `Hola, ${saludo}`,
+    `Quiero enviar ${calc.from} ${formatAmount(calc.input)} para recibir ${calc.to} ${formatMessageOutput(calc)}`
+  ].join("\n");
+}
+
+function showCopyFeedback() {
+  const { copyResultBtn } = getDom();
+  if (!copyResultBtn) return;
+
+  const originalLabel = copyResultBtn.getAttribute("aria-label") || "Copiar resultado";
+  copyResultBtn.setAttribute("aria-label", "Copiado");
+  window.setTimeout(() => {
+    copyResultBtn.setAttribute("aria-label", originalLabel);
+  }, 2000);
+}
+
+async function copyResult() {
+  if (!lastCopyText) return;
+
+  try {
+    await navigator.clipboard.writeText(lastCopyText);
+    showCopyFeedback();
+    return;
+  } catch (_error) {
+    // Fallback para navegadores sin clipboard API.
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = lastCopyText;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand("copy");
+    showCopyFeedback();
+  } catch (_error) {
+    renderError("No se pudo copiar el resultado.");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
+function normalizePair() {
+  const { sourceSelect, modeSelect } = getSelectorRoles();
+  sourceSelect.value = sourceCurrency;
+  sourceSelect.disabled = false;
+
+  const firstModeValue = settingsList.length > 0 ? asModeValue(settingsList[0].docId) : "";
+  if (!parseModeValue(modeSelect.value)) {
+    modeSelect.value = firstModeValue;
+  }
+  modeSelect.disabled = false;
+  selectedModeDocId = parseModeValue(modeSelect.value);
+  applySelectorLayout();
+}
+
+async function calculate() {
+  const { amountInput, resultText, copyResultBtn, resultNote } = getDom();
+
+  if (settingsByDocId.size === 0 || loadedSettingsSource !== sourceCurrency) {
     try {
-      const adjResponse = await fetch('adjustments.json', { cache: 'no-store' });
-      if (adjResponse.ok) {
-        const adj = await adjResponse.json();
-        const ajusteBase = Number(adj.AJUSTE_BASE);
-        const cambio = Number(adj.CAMBIO);
-        const difRateMax = Number(adj.DIF_RATE_MAX);
-        if (
-          Number.isFinite(ajusteBase) &&
-          Number.isFinite(cambio) &&
-          Number.isFinite(difRateMax) &&
-          cambio !== 0
-        ) {
-          const rateMin = ajusteBase / cambio;
-          const rateMax = rateMin - difRateMax;
-          if (Number.isFinite(rateMin) && Number.isFinite(rateMax)) {
-            RATE_MIN = rateMin;
-            RATE_MAX = rateMax;
-          }
-        }
-
-        const ajusteBaseEf = Number(adj.AJUSTE_BASE_EF);
-        const cambioEf = Number(adj.CAMBIO_EF);
-        const difRateMaxEf = Number(adj.DIF_RATE_MAX_EF);
-        if (
-          Number.isFinite(ajusteBaseEf) &&
-          Number.isFinite(cambioEf) &&
-          Number.isFinite(difRateMaxEf) &&
-          cambioEf !== 0
-        ) {
-          const rateMinEf = ajusteBaseEf / cambioEf;
-          const rateMaxEf = rateMinEf - difRateMaxEf;
-          if (Number.isFinite(rateMinEf) && Number.isFinite(rateMaxEf)) {
-            RATE_MIN_CUP_EF = rateMinEf;
-            RATE_MAX_CUP_EF = rateMaxEf;
-          }
-        }
-      }
+      ensureSourceSettings(sourceCurrency);
+      useSettingsForSource(sourceCurrency);
+      applyOptionsFromSettings();
     } catch (error) {
-      console.warn('Adjustments not applied:', error);
-    }
-  } catch (error) {
-    console.error('Error loading prices:', error);
-  }
-}
-
-function enforceNumericInput(event) {
-  let value = event.target.value.replace(/\D/g, '');
-  if (value.length > 9) value = value.slice(0, 9);
-  value = value.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  event.target.value = value;
-}
-
-function updateDisabledOptions() {
-  applyFixedState();
-  const fromSelect = document.getElementById('currencyFrom');
-  const toSelect = document.getElementById('currencyTo');
-
-  if (fixedSide === 'from') {
-    const from = fromSelect.value;
-    for (let opt of toSelect.options) {
-      if (opt.value === 'ARS') continue;
-      opt.disabled = (
-        opt.value === from ||
-        (from === 'CUP' && opt.value === 'MLC') ||
-        (from === 'CUP_EF' && opt.value === 'MLC') ||
-        (from === 'MLC' && opt.value === 'CUP') ||
-        (from === 'MLC' && opt.value === 'CUP_EF') ||
-        ((from === 'SALDO' || opt.value === 'SALDO') && (from !== 'ARS' && opt.value !== 'ARS'))
-      );
-    }
-    if (toSelect.value === 'ARS') {
-      toSelect.value = firstNonArsValue(toSelect);
+      renderError("No se pudo cargar la configuración.");
+      console.error(error);
+      return;
     }
   }
+  normalizePair();
+
+  const amount = parseAmount(amountInput.value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    renderError("Ingresa un monto válido mayor a 0.");
+    return;
+  }
+
+  const { modeSelect } = getSelectorRoles();
+  const modeValue = modeSelect.value;
+  const setting = getSettingBySelectValue(modeValue);
+  if (!setting) {
+    renderError("Ese modo está deshabilitado o sin configuración.");
+    return;
+  }
+
+  const conversion = sourceOnLeft
+    ? convertArsToMode(amount, setting)
+    : convertModeToArs(amount, setting);
+
+  if (!Number.isFinite(conversion.result) || conversion.result <= 0 || !Number.isFinite(conversion.amountArs)) {
+    renderError("No se pudo calcular con los parámetros actuales.");
+    return;
+  }
+
+  const modeLabel = modeSelect.options[modeSelect.selectedIndex]?.textContent || setting.label || setting.docId;
+  const outputAmount = sourceOnLeft ? conversion.result : conversion.amountArs;
+  const sourceAmount = sourceOnLeft ? amount : outputAmount;
+  const modeAmount = sourceOnLeft ? outputAmount : amount;
+  const sourcePrefix = currencyPrefix(sourceCurrency);
+  const modePrefix = "$";
+  const mainText = sourceOnLeft
+    ? `Con ${sourcePrefix} ${formatAmount(amount)} ${sourceCurrency} recibis aprox. ${modePrefix} ${formatAmount(outputAmount, 2)} ${modeLabel}`
+    : `Recibis aprox. ${modePrefix} ${formatAmount(amount, 2)} ${modeLabel} con ${sourcePrefix} ${formatAmount(outputAmount)} ${sourceCurrency}`;
+
+  resultText.innerHTML = `<strong>${mainText}</strong>`;
+
+  if (resultNote) {
+    if (setting.docId === "usd_cash" && modeAmount < 50) {
+      resultNote.textContent = "Es posible que no haya disponibilidad para envios inferiores a 50 USD. Consulta con el proveedor de servicios.";
+      resultNote.hidden = false;
+    } else {
+      resultNote.textContent = "";
+      resultNote.hidden = true;
+    }
+  }
+
+  lastCalculation = {
+    from: sourceCurrency,
+    to: modeLabel,
+    input: sourceAmount,
+    output: modeAmount,
+    modeDocId: setting.docId,
+    modeLabel: setting.label || setting.docId
+  };
+  lastCopyText = buildWhatsAppMessage(lastCalculation);
+
+  if (copyResultBtn) copyResultBtn.hidden = false;
 }
 
 function swapCurrencies() {
-  const f = document.getElementById('currencyFrom');
-  const t = document.getElementById('currencyTo');
-  const prevFrom = f.value;
-  const prevTo = t.value;
-  if (fixedSide === 'from') {
-    fixedSide = 'to';
-    f.value = prevTo === 'ARS' ? firstNonArsValue(f) : prevTo;
-  } else {
-    fixedSide = 'from';
-    t.value = prevFrom === 'ARS' ? firstNonArsValue(t) : prevFrom;
-  }
-  updateDisabledOptions();
-  document.getElementById('amount').value = '';
-  document.getElementById('resultText').textContent = '';
-  lastResult = '';
-  copyText = '';
-  const copyBtn = document.getElementById('copyBtn');
-  if (copyBtn) copyBtn.style.display = 'none';
-}
-
-function rateForCup(cup) {
-  if (cup <= MIN_CUP) return RATE_MIN;
-  if (cup >= 100000) return RATE_MAX;
-  const slope = (RATE_MAX - RATE_MIN) / (100000 - MIN_CUP);
-  return RATE_MIN + slope * (cup - MIN_CUP);
-}
-
-function cupToArs(cup) { return cup * rateForCup(cup); }
-
-function arsToCup(ars) {
-  if (ars >= RATE_MAX * 100000) {
-    return Math.floor(ars / RATE_MAX);
-  }
-  let low = MIN_CUP, high = 100000, mid, est;
-  for (let i = 0; i < 50; i++) {
-    mid = (low + high) / 2;
-    est = cupToArs(mid);
-    if (est > ars) high = mid; else low = mid;
-  }
-  return mid;
-}
-
-function rateForCupEfectivo(cup) {
-  if (cup <= MIN_CUP_EF) return RATE_MIN_CUP_EF;
-  if (cup >= 100000) return RATE_MAX_CUP_EF;
-  const slope = (RATE_MAX_CUP_EF - RATE_MIN_CUP_EF) / (100000 - MIN_CUP_EF);
-  return RATE_MIN_CUP_EF + slope * (cup - MIN_CUP_EF);
-}
-
-function cupEfectivoToArs(cup) { return cup * rateForCupEfectivo(cup); }
-
-function arsToCupEfectivo(ars) {
-  if (ars >= RATE_MAX_CUP_EF * 100000) {
-    return Math.floor(ars / RATE_MAX_CUP_EF);
-  }
-  let low = MIN_CUP_EF, high = 100000, mid, est;
-  for (let i = 0; i < 50; i++) {
-    mid = (low + high) / 2;
-    est = cupEfectivoToArs(mid);
-    if (est > ars) high = mid; else low = mid;
-  }
-  return mid;
-}
-
-function cupToArsFixed(cup) { return cup * RATE_MIN; }
-
-function arsToCupFixed(ars) { return ars / RATE_MIN; }
-
-function arsMinParaSaldoMinimo() {
-  const cupMin = MIN_SALDO * CUP_POR_SALDO;
-  return Math.round(cupMin * RATE_MIN);
-}
-
-function copyToClipboard() {
-  if (!copyText) return;
-  
-  navigator.clipboard.writeText(copyText).then(() => {
-    const copyBtn = document.getElementById('copyBtn');
-    const originalHTML = copyBtn.innerHTML;
-    copyBtn.innerHTML = '✓';
-    setTimeout(() => {
-      copyBtn.innerHTML = originalHTML;
-    }, 1000);
-  }).catch(err => {
-    console.error('Error copying to clipboard:', err);
-  });
-}
-
-function showCopyButton() {
-  let copyBtn = document.getElementById('copyBtn');
-  if (!copyBtn) {
-    copyBtn = document.createElement('button');
-    copyBtn.id = 'copyBtn';
-    copyBtn.className = 'copy-btn';
-    copyBtn.innerHTML = '📋';
-    copyBtn.onclick = copyToClipboard;
-    const resultText = document.getElementById('resultText');
-    resultText.appendChild(copyBtn);
-  }
-  copyBtn.style.display = 'inline-flex';
-}
-
-function calculate() {
-  const from = document.getElementById('currencyFrom').value;
-  const to   = document.getElementById('currencyTo').value;
-  const raw  = document.getElementById('amount').value;
-  const num  = parseFloat(raw.replace(/\./g, ''));
-  const out  = document.getElementById('resultText');
-  out.textContent = ''; lastResult = ''; copyText = '';
-  
-  const copyBtn = document.getElementById('copyBtn');
-  if (copyBtn) copyBtn.style.display = 'none';
-
-  if (from === to) {
-    out.textContent = 'Seleccione monedas diferentes.';
-    return;
-  }
-  if (!raw || isNaN(num)) {
-    out.textContent = 'Ingrese un monto válido.';
-    return;
-  }
-
-  if (from==='ARS' && to==='CUP') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${formatAR(MIN_ARS)}.`;
-      return;
-    }
-    const cup = Math.round(arsToCup(num));
-    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(cup)} CUP.`;
-    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(cup)} CUP.`;
-    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(cup)} CUP.`;
-    showCopyButton();
-  }
-  else if (from==='CUP' && to==='ARS') {
-    if (num < MIN_CUP) {
-      out.textContent = `CUP ≥ ${formatAR(MIN_CUP)}.`;
-      return;
-    }
-    const ars = Math.round(cupToArs(num));
-    out.textContent = `💲 Recibis aprox. ${formatAR(num)} CUP con ${formatAR(ars)} ARS.`;
-    copyText = `Recibis ${formatAR(num)} CUP con ${formatAR(ars)} ARS.`;
-    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} CUP.`;
-    showCopyButton();
-  }
-  else if (from==='ARS' && to==='CUP_EF') {
-    if (num < MIN_ARS_CUP_EF) {
-      out.textContent = `ARS ≥ ${formatAR(MIN_ARS_CUP_EF)}.`;
-      return;
-    }
-    const cup = Math.round(arsToCupEfectivo(num));
-    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(cup)} CUP Efectivo.`;
-    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(cup)} CUP Efectivo.`;
-    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(cup)} CUP Efectivo.`;
-    showCopyButton();
-  }
-  else if (from==='CUP_EF' && to==='ARS') {
-    if (num < MIN_CUP_EF) {
-      out.textContent = `CUP Efectivo ≥ ${formatAR(MIN_CUP_EF)}.`;
-      return;
-    }
-    const ars = Math.round(cupEfectivoToArs(num));
-    out.textContent = `💲 Recibis aprox. ${formatAR(num)} CUP Efectivo con ${formatAR(ars)} ARS.`;
-    copyText = `Recibis ${formatAR(num)} CUP Efectivo con ${formatAR(ars)} ARS.`;
-    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} CUP Efectivo.`;
-    showCopyButton();
-  }
-  else if (from==='ARS' && to==='MLC') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${formatAR(MIN_ARS)}.`;
-      return;
-    }
-    const mlc = (num / RATE_MLC).toFixed(2);
-    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${mlc} MLC.`;
-    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${mlc} MLC.`;
-    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${mlc} MLC.`;
-    showCopyButton();
-  }
-  else if (from==='MLC' && to==='ARS') {
-    if (num < MIN_MLC) {
-      out.textContent = `MLC ≥ ${MIN_MLC}.`;
-      return;
-    }
-    const ars = Math.round(num * RATE_MLC);
-    out.textContent = `💲 Recibis aprox. ${num} MLC con ${formatAR(ars)} ARS.`;
-    copyText = `Recibis ${num} MLC con ${formatAR(ars)} ARS.`;
-    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${num} MLC.`;
-    showCopyButton();
-  }
-  else if (from==='ARS' && to==='USD') {
-    if (num < MIN_ARS) {
-      out.textContent = `ARS ≥ ${formatAR(MIN_ARS)}.`;
-      return;
-    }
-    const usd = Math.round(num / (RATE_USD * (1 + USD_EXTRA)));
-    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(usd)} USD Efectivo.`;
-    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(usd)} USD Efectivo.`;
-    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(usd)} USD Efectivo.`;
-    showCopyButton();
-  }
-  else if (from==='USD' && to==='ARS') {
-    const ars = Math.round(num * (1 + USD_EXTRA) * RATE_USD);
-    out.textContent = `💲 Recibis aprox. ${formatAR(num)} USD Efectivo con ${formatAR(ars)} ARS.`;
-    copyText = `Recibis ${formatAR(num)} USD Efectivo con ${formatAR(ars)} ARS.`;
-    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} USD Efectivo.`;
-    showCopyButton();
-  }
-  else if (from==='ARS' && to==='SALDO') {
-    const minArsSaldo = arsMinParaSaldoMinimo();
-    if (num < minArsSaldo) {
-      out.textContent = `ARS ≥ ${formatAR(minArsSaldo)} (equiv. a ${MIN_SALDO} Saldo).`;
-      return;
-    }
-    const cup = arsToCupFixed(num);
-    const saldo = Math.round(cup / CUP_POR_SALDO);
-    out.textContent = `💲 Con ${formatAR(num)} ARS recibís aprox. ${formatAR(saldo)} Saldo Móvil.`;
-    copyText = `Con ${formatAR(num)} ARS Recibis aprox. ${formatAR(saldo)} Saldo Móvil.`;
-    lastResult = `Quiero enviar ${formatAR(num)} ARS y recibir ${formatAR(saldo)} Saldo Móvil.`;
-    showCopyButton();
-  }
-  else if (from==='SALDO' && to==='ARS') {
-    if (num < MIN_SALDO) {
-      out.textContent = `Saldo ≥ ${formatAR(MIN_SALDO)}.`;
-      return;
-    }
-    const cup = num * CUP_POR_SALDO;
-    const ars = Math.round(cupToArsFixed(cup));
-    out.textContent = `💲 Recibis aprox. ${formatAR(num)} Saldo Móvil con ${formatAR(ars)} ARS.`;
-    copyText = `Recibis ${formatAR(num)} Saldo Móvil con ${formatAR(ars)} ARS.`;
-    lastResult = `Quiero enviar ${formatAR(ars)} ARS y recibir ${formatAR(num)} Saldo Móvil.`;
-    showCopyButton();
-  }
-  else if (from==='SALDO' || to==='SALDO') {
-    out.textContent = '⛔ Conversión con Saldo Móvil no permitida (solo ARS ⇄ Saldo).';
-  }
-  else {
-    out.textContent = '⛔ Conversión CUP ⇄ MLC no permitida.';
-  }
+  const { fromSelect, toSelect } = getDom();
+  selectedModeDocId = parseModeValue(fromSelect.value) || parseModeValue(toSelect.value) || selectedModeDocId;
+  sourceOnLeft = !sourceOnLeft;
+  applyOptionsFromSettings();
+  normalizePair();
 }
 
 function sendToWhatsApp() {
-  if (!lastResult) {
-    alert('Primero calcula un monto válido antes de enviar.');
+  const amountInput = document.getElementById("amount");
+  const inputAmount = parseAmount(amountInput.value);
+
+  if (!lastCalculation || !Number.isFinite(inputAmount) || inputAmount <= 0) {
+    renderError("Primero realiza un cálculo válido.");
     return;
   }
-  const phone = '5491165218910';
-  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(lastResult)}`, '_blank');
+
+  const text = buildWhatsAppMessage(lastCalculation);
+
+  const whatsappNumber = "5491165218910";
+  const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
+  window.open(url, "_blank");
 }
 
-window.addEventListener('DOMContentLoaded', async () => {
-  await loadPrices();
-  fixedSide = 'from';
-  updateDisabledOptions();
-  document.getElementById('currencyFrom').addEventListener('change', updateDisabledOptions);
-  document.getElementById('currencyTo').addEventListener('change', updateDisabledOptions);
-  document.getElementById('amount').addEventListener('input', enforceNumericInput);
-});
+async function init() {
+  const { amountInput, resultText, fromSelect, toSelect, copyResultBtn, resultNote } = getDom();
+  resultText.textContent = "Cargando configuración...";
+  if (copyResultBtn) copyResultBtn.hidden = true;
+  if (resultNote) resultNote.hidden = true;
 
+  try {
+    await loadAllSettings();
+    sourceCurrency = readStoredSourceCurrency();
+    applyCountryTheme(sourceCurrency);
+    ensureSourceSettings(sourceCurrency);
+    useSettingsForSource(sourceCurrency);
+    applyOptionsFromSettings();
+    normalizePair();
+    resultText.textContent = "Listo para calcular.";
+  } catch (error) {
+    console.error(error);
+    resultText.textContent = "No se pudo cargar la configuración.";
+  }
+
+  amountInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") calculate();
+  });
+
+  const syncModeSelection = () => {
+    const { sourceSelect, modeSelect } = getSelectorRoles();
+    const nextSourceCurrency = sourceSelect.value;
+
+    if (nextSourceCurrency !== sourceCurrency) {
+      sourceCurrency = nextSourceCurrency;
+      persistSourceCurrency(sourceCurrency);
+      applyCountryTheme(sourceCurrency);
+      selectedModeDocId = null;
+      resultText.textContent = "Cargando configuración...";
+      if (copyResultBtn) copyResultBtn.hidden = true;
+      if (resultNote) resultNote.hidden = true;
+      try {
+        ensureSourceSettings(sourceCurrency);
+        useSettingsForSource(sourceCurrency);
+        applyOptionsFromSettings();
+        normalizePair();
+        resultText.textContent = "Listo para calcular.";
+      } catch (error) {
+        console.error(error);
+        settingsList = [];
+        settingsByDocId = new Map();
+        loadedSettingsSource = null;
+        applyOptionsFromSettings();
+        normalizePair();
+        resultText.textContent = "No se pudo cargar la configuración para la moneda seleccionada.";
+      }
+      return;
+    }
+
+    selectedModeDocId = parseModeValue(modeSelect.value) || selectedModeDocId;
+    normalizePair();
+  };
+  fromSelect.addEventListener("change", syncModeSelection);
+  toSelect.addEventListener("change", syncModeSelection);
+}
+
+window.calculate = calculate;
+window.swapCurrencies = swapCurrencies;
+window.sendToWhatsApp = sendToWhatsApp;
+window.copyResult = copyResult;
+
+init();
