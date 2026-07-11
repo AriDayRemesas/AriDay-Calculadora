@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>AriDay Remesas</title>
-  <link rel="stylesheet" href="styles.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body data-source="ARS">
 
@@ -38,6 +38,15 @@
     <label for="amount">Ingrese monto (máx. 9 dígitos):</label>
     <input type="text" id="amount" inputmode="numeric" pattern="[0-9]*" placeholder="Ej: 15.000" maxlength="13" />
 
+    <div class="saldo-recommendations" id="saldoRecommendations" hidden>
+      <p class="saldo-recommendations-label">Opciones recomendadas:</p>
+      <div class="saldo-recommendations-buttons">
+        <button type="button" class="saldo-rec-btn" onclick="applySaldoRecommendation(120)">120 saldo</button>
+        <button type="button" class="saldo-rec-btn" onclick="applySaldoRecommendation(240)">240 saldo</button>
+        <button type="button" class="saldo-rec-btn" onclick="applySaldoRecommendation(360)">360 saldo</button>
+      </div>
+    </div>
+
     <div class="result-area">
       <div class="result-row">
         <div class="result" id="resultText"></div>
@@ -57,6 +66,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=3"></script>
+  <script src="script.js?v=4"></script>
 </body>
 </html>
