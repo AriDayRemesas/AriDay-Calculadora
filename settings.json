@@ -1,7 +1,7 @@
 {
   "ARS": {
     "classic": {
-      "Rbase": 1520,
+      "Rbase": 1620,
       "Rcambio": 0.9212112,
       "Rdifer": 0,
       "Mmin": 37000,
@@ -61,7 +61,7 @@
       "order": 6
     },
     "usd_cash": {
-      "Rbase": 1520,
+      "Rbase": 1620,
       "Rcambio": 0.9212112,
       "Rdifer": 0,
       "Mmin": 37000,
