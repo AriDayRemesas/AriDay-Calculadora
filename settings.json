@@ -1,7 +1,7 @@
 {
   "ARS": {
     "classic": {
-      "Rbase": 1760,
+      "Rbase": 1800,
       "Rcambio": 1.0,
       "Rdifer": 0,
       "Mmin": 37000,
@@ -13,8 +13,8 @@
       "order": 5
     },
     "cup_cash": {
-      "Rbase": 1520,
-      "Rcambio": 550,
+      "Rbase": 1600,
+      "Rcambio": 584,
       "Rdifer": 0.02,
       "Mmin": 10000,
       "Mmax": 100000,
@@ -25,8 +25,8 @@
       "order": 1
     },
     "cup_electronic": {
-      "Rbase": 1520,
-      "Rcambio": 755,
+      "Rbase": 1600,
+      "Rcambio": 850,
       "Rdifer": 0.02,
       "Mmin": 10000,
       "Mmax": 100000,
@@ -37,7 +37,7 @@
       "order": 2
     },
     "mlc": {
-      "Rbase": 1520,
+      "Rbase": 1700,
       "Rcambio": 1,
       "Rdifer": 0,
       "Mmin": 10000,
@@ -61,7 +61,7 @@
       "order": 6
     },
     "usd_cash": {
-      "Rbase": 1760,
+      "Rbase": 1800,
       "Rcambio": 1.0,
       "Rdifer": 0,
       "Mmin": 37000,
