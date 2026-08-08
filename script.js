@@ -60,6 +60,160 @@ function applyCountryTheme(currency) {
   if (flagEl) {
     flagEl.textContent = COUNTRY_FLAGS[currency] || "🌎";
   }
+  document.body.classList.remove("theme-pulse");
+  // Force reflow so the animation can replay.
+  void document.body.offsetWidth;
+  document.body.classList.add("theme-pulse");
+  window.setTimeout(() => document.body.classList.remove("theme-pulse"), 500);
+}
+
+function animateOnce(element, className, durationMs = 450) {
+  if (!element) return;
+  element.classList.remove(className);
+  void element.offsetWidth;
+  element.classList.add(className);
+  window.setTimeout(() => element.classList.remove(className), durationMs);
+}
+
+function spawnRipple(event, button) {
+  if (!button || button.disabled) return;
+  const rect = button.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height) * 1.15;
+  const ink = document.createElement("span");
+  ink.className = "ripple-ink";
+  ink.style.width = `${size}px`;
+  ink.style.height = `${size}px`;
+
+  const clientX = event.clientX ?? (rect.left + rect.width / 2);
+  const clientY = event.clientY ?? (rect.top + rect.height / 2);
+  ink.style.left = `${clientX - rect.left - size / 2}px`;
+  ink.style.top = `${clientY - rect.top - size / 2}px`;
+  button.appendChild(ink);
+  window.setTimeout(() => ink.remove(), 600);
+}
+
+function closeAllCustomSelects(exceptRoot = null) {
+  document.querySelectorAll(".custom-select.is-open").forEach((root) => {
+    if (exceptRoot && root === exceptRoot) return;
+    root.classList.remove("is-open");
+    const trigger = root.querySelector(".custom-select-trigger");
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+  });
+}
+
+function syncCustomSelect(selectElement) {
+  if (!selectElement) return;
+  const root = selectElement.closest(".selector-column")?.querySelector(".custom-select");
+  if (!root) return;
+
+  const trigger = root.querySelector(".custom-select-trigger");
+  const menu = root.querySelector(".custom-select-menu");
+  if (!trigger || !menu) return;
+
+  const selected = selectElement.options[selectElement.selectedIndex];
+  trigger.textContent = selected ? selected.textContent : "Seleccionar";
+  trigger.disabled = selectElement.disabled;
+
+  menu.innerHTML = "";
+  Array.from(selectElement.options).forEach((option, index) => {
+    if (option.hidden) return;
+    const item = document.createElement("li");
+    item.className = "custom-select-option";
+    item.setAttribute("role", "option");
+    item.dataset.value = option.value;
+    item.dataset.index = String(index);
+    item.textContent = option.textContent;
+    item.setAttribute("aria-selected", option.selected ? "true" : "false");
+    if (option.selected) item.classList.add("is-selected");
+    if (option.disabled) {
+      item.setAttribute("aria-disabled", "true");
+      item.style.opacity = "0.5";
+      item.style.pointerEvents = "none";
+    }
+    item.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (option.disabled) return;
+      selectElement.value = option.value;
+      selectElement.dispatchEvent(new Event("change", { bubbles: true }));
+      closeAllCustomSelects();
+      animateOnce(trigger, "is-flash", 550);
+    });
+    menu.appendChild(item);
+  });
+}
+
+function syncAllCustomSelects() {
+  const { fromSelect, toSelect } = getDom();
+  syncCustomSelect(fromSelect);
+  syncCustomSelect(toSelect);
+}
+
+function enhanceSelect(selectElement) {
+  if (!selectElement || selectElement.dataset.enhanced === "true") return;
+  const column = selectElement.closest(".selector-column") || selectElement.parentElement;
+  if (!column) return;
+
+  selectElement.classList.add("native-select");
+  selectElement.dataset.enhanced = "true";
+
+  const root = document.createElement("div");
+  root.className = "custom-select";
+
+  const trigger = document.createElement("button");
+  trigger.type = "button";
+  trigger.className = "custom-select-trigger";
+  trigger.setAttribute("aria-haspopup", "listbox");
+  trigger.setAttribute("aria-expanded", "false");
+
+  const menu = document.createElement("ul");
+  menu.className = "custom-select-menu";
+  menu.setAttribute("role", "listbox");
+
+  root.appendChild(trigger);
+  root.appendChild(menu);
+  column.appendChild(root);
+
+  trigger.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (selectElement.disabled) return;
+    const willOpen = !root.classList.contains("is-open");
+    closeAllCustomSelects(willOpen ? root : null);
+    root.classList.toggle("is-open", willOpen);
+    trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  });
+
+  syncCustomSelect(selectElement);
+}
+
+function initCustomSelects() {
+  const { fromSelect, toSelect } = getDom();
+  enhanceSelect(fromSelect);
+  enhanceSelect(toSelect);
+
+  document.addEventListener("click", () => closeAllCustomSelects());
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeAllCustomSelects();
+  });
+}
+
+function initInteractiveAnimations() {
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("button");
+    if (!button || button.classList.contains("custom-select-trigger")) return;
+    if (
+      button.classList.contains("swap-btn") ||
+      button.classList.contains("btn-enviar") ||
+      button.classList.contains("saldo-rec-btn") ||
+      (!button.classList.contains("copy-btn") && button.tagName === "BUTTON")
+    ) {
+      if (!button.classList.contains("swap-btn") && !button.classList.contains("copy-btn")) {
+        spawnRipple(event, button);
+      }
+      animateOnce(button, "is-pressed", 350);
+    }
+  });
 }
 
 function getSelectorRoles() {
@@ -205,6 +359,7 @@ function applySelectorLayout() {
     directionSummary.textContent = sourceOnLeft
       ? `Ingresar: ${sourceCurrency} | Recibir: ${modeLabel}`
       : `Ingresar: ${modeLabel} | ${sourceCurrency} requerido`;
+    animateOnce(directionSummary, "is-updating", 400);
   }
   updateSaldoRecommendations();
 }
@@ -212,7 +367,18 @@ function applySelectorLayout() {
 function updateSaldoRecommendations() {
   const saldoRecommendations = document.getElementById("saldoRecommendations");
   if (!saldoRecommendations) return;
-  saldoRecommendations.hidden = selectedModeDocId !== "saldo_movil";
+  const shouldShow = selectedModeDocId === "saldo_movil";
+  const wasHidden = saldoRecommendations.hidden;
+  saldoRecommendations.hidden = !shouldShow;
+  if (!shouldShow) {
+    saldoRecommendations.classList.remove("is-visible");
+    return;
+  }
+  if (wasHidden) {
+    saldoRecommendations.classList.remove("is-visible");
+    void saldoRecommendations.offsetWidth;
+  }
+  saldoRecommendations.classList.add("is-visible");
 }
 
 function validateSetting(docId, data) {
@@ -366,6 +532,7 @@ function applyOptionsFromSettings() {
   }
 
   applySelectorLayout();
+  syncAllCustomSelects();
 }
 
 function calculateRate(amountArs, setting) {
@@ -419,6 +586,7 @@ function convertModeToArs(targetAmount, setting) {
 function renderError(message) {
   const { resultText, copyResultBtn, resultNote } = getDom();
   resultText.textContent = message;
+  animateOnce(resultText, "is-updating", 450);
   if (copyResultBtn) copyResultBtn.hidden = true;
   if (resultNote) {
     resultNote.hidden = true;
@@ -450,6 +618,7 @@ function showCopyFeedback() {
 
   const originalLabel = copyResultBtn.getAttribute("aria-label") || "Copiar resultado";
   copyResultBtn.setAttribute("aria-label", "Copiado");
+  animateOnce(copyResultBtn, "is-copied", 500);
   window.setTimeout(() => {
     copyResultBtn.setAttribute("aria-label", originalLabel);
   }, 2000);
@@ -495,6 +664,7 @@ function normalizePair() {
   modeSelect.disabled = false;
   selectedModeDocId = parseModeValue(modeSelect.value);
   applySelectorLayout();
+  syncAllCustomSelects();
 }
 
 async function calculate() {
@@ -547,6 +717,7 @@ async function calculate() {
     : `Recibis aprox. ${modePrefix} ${formatAmount(amount, 2)} ${modeLabel} con ${sourcePrefix} ${formatAmount(outputAmount)} ${sourceCurrency}`;
 
   resultText.innerHTML = `<strong>${mainText}</strong>`;
+  animateOnce(resultText, "is-updating", 450);
 
   if (resultNote) {
     if (setting.docId === "usd_cash" && modeAmount < 50) {
@@ -572,6 +743,15 @@ async function calculate() {
 }
 
 function swapCurrencies() {
+  const swapBtn = document.querySelector(".swap-btn");
+  if (swapBtn) {
+    const isMobile = window.matchMedia("(max-width: 480px)").matches;
+    const fromDeg = isMobile
+      ? (sourceOnLeft ? 90 : -90)
+      : (sourceOnLeft ? 0 : 180);
+    swapBtn.style.setProperty("--swap-from", `${fromDeg}deg`);
+    animateOnce(swapBtn, "is-spinning", 550);
+  }
   const { fromSelect, toSelect } = getDom();
   selectedModeDocId = parseModeValue(fromSelect.value) || parseModeValue(toSelect.value) || selectedModeDocId;
   sourceOnLeft = !sourceOnLeft;
@@ -615,6 +795,11 @@ async function applySaldoRecommendation(saldoAmount) {
   }
 
   setAmountInputValue(Math.ceil(conversion.amountArs));
+
+  document.querySelectorAll(".saldo-rec-btn").forEach((btn) => {
+    btn.classList.toggle("is-selected", btn.textContent.includes(String(saldoAmount)));
+  });
+
   await calculate();
 }
 
@@ -639,6 +824,9 @@ async function init() {
   resultText.textContent = "Cargando configuración...";
   if (copyResultBtn) copyResultBtn.hidden = true;
   if (resultNote) resultNote.hidden = true;
+
+  initCustomSelects();
+  initInteractiveAnimations();
 
   try {
     await loadAllSettings();
