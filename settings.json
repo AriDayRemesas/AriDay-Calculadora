@@ -26,7 +26,7 @@
     },
     "cup_electronic": {
       "Rbase": 1600,
-      "Rcambio": 820,
+      "Rcambio": 810,
       "Rdifer": 0.02,
       "Mmin": 10000,
       "Mmax": 100000,
