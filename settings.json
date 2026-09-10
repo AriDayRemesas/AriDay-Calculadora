@@ -50,7 +50,7 @@
     },
     "saldo_movil": {
       "Rbase": 1500,
-      "Rcambio": 109,
+      "Rcambio": 108,
       "Rdifer": 0,
       "Mmin": 2700,
       "Mmax": 100000,
