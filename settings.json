@@ -14,7 +14,7 @@
     },
     "cup_cash": {
       "Rbase": 1600,
-      "Rcambio": 605,
+      "Rcambio": 635,
       "Rdifer": 0.02,
       "Mmin": 10000,
       "Mmax": 100000,
@@ -26,7 +26,7 @@
     },
     "cup_electronic": {
       "Rbase": 1600,
-      "Rcambio": 815,
+      "Rcambio": 845,
       "Rdifer": 0.02,
       "Mmin": 10000,
       "Mmax": 100000,
