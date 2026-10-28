@@ -14,7 +14,7 @@
     },
     "cup_cash": {
       "Rbase": 1600,
-      "Rcambio": 635,
+      "Rcambio": 675,
       "Rdifer": 0.02,
       "Mmin": 10000,
       "Mmax": 100000,
