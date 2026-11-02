@@ -746,7 +746,7 @@ async function calculate() {
     modeDocId: setting.docId,
     modeLabel: setting.label || setting.docId
   };
-  lastCopyText = buildWhatsAppMessage(lastCalculation);
+  lastCopyText = resultText.textContent.trim();
 
   if (copyResultBtn) copyResultBtn.hidden = false;
 }
@@ -821,7 +821,8 @@ function sendToWhatsApp() {
     return;
   }
 
-  const text = buildWhatsAppMessage(lastCalculation);
+  const text = document.getElementById("resultText")?.textContent?.trim();
+  if (!text) return;
 
   const whatsappNumber = "5491165218910";
   const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
