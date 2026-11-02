@@ -821,8 +821,11 @@ function sendToWhatsApp() {
     return;
   }
 
-  const text = document.getElementById("resultText")?.textContent?.trim();
-  if (!text) return;
+  const resultText = document.getElementById("resultText")?.textContent?.trim();
+  if (!resultText) return;
+  const hour = new Date().getHours();
+  const saludo = hour < 12 ? "buenos días" : hour < 19 ? "buenas tardes" : "buenas noches";
+  const text = `Hola, ${saludo}\n${resultText}`;
 
   const whatsappNumber = "5491165218910";
   const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
