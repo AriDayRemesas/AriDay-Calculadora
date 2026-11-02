@@ -437,6 +437,15 @@ async function loadAllSettings() {
     throw new Error(`No se pudo cargar ${SETTINGS_URL}.`);
   }
 
+  const lastModified = response.headers.get("Last-Modified");
+  const updatedEl = document.getElementById("ratesUpdated");
+  if (updatedEl) {
+    const date = lastModified ? new Date(lastModified) : null;
+    updatedEl.textContent = date && !Number.isNaN(date.getTime())
+      ? `Tasas actualizadas: ${new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "long", year: "numeric" }).format(date)}`
+      : "Fecha de actualización de tasas no disponible";
+  }
+
   const data = await response.json();
   if (!data || typeof data !== "object") {
     throw new Error("El archivo de configuracion no es valido.");
